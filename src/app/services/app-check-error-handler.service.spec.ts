@@ -30,7 +30,7 @@ describe('AppCheckErrorHandlerService', () => {
     vi.restoreAllMocks();
   });
 
-  it('opens the App Check error dialog for a Firestore permission-denied error', () => {
+  it('shows the fallback snackbar, not the App Check dialog, for a Firestore permission-denied error', () => {
     const error = new FirebaseError(
       'permission-denied',
       'Missing or insufficient permissions.'
@@ -38,11 +38,11 @@ describe('AppCheckErrorHandlerService', () => {
 
     service.handle(error, 'fallback message');
 
-    expect(mockDialog.open).toHaveBeenCalledWith(AppCheckErrorDialogComponent, {
-      disableClose: false,
-      maxWidth: '80vw',
-    });
-    expect(mockSnackbar.openFromComponent).not.toHaveBeenCalled();
+    expect(mockDialog.open).not.toHaveBeenCalled();
+    expect(mockSnackbar.openFromComponent).toHaveBeenCalledWith(
+      CustomSnackbarComponent,
+      { data: { message: 'fallback message' } }
+    );
   });
 
   it('opens the App Check error dialog for a Functions unauthenticated error', () => {

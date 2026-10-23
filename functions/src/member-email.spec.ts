@@ -6,21 +6,28 @@ import {
   type DocumentData,
   type DocumentReference,
 } from 'firebase-admin/firestore';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 // Importing from index both initialises the Admin SDK and proves the
 // callables are exported from the functions entry (so they deploy).
 import {
   confirmMemberEmailChange,
   deleteExpiredMemberEmailChanges,
   requestMemberEmailChange,
+  updateMemberEmails,
 } from './index';
 import {
+  AUTH_LOOKUP_UNAVAILABLE,
   CONFIRM_LINK_INVALID,
   CONFIRM_MEMBER_UNLINKED,
+  CONFIRMATION_RECENTLY_SENT,
   CONFIRM_WRONG_ACCOUNT,
   DUPLICATE_MEMBER_EMAIL,
   EMAIL_CHANGE_LIMIT,
+  LOGIN_EMAIL_INVALID,
   MEMBER_EMAIL_LIMITS,
+  MEMBER_EMAIL_RECIPIENT_COOLDOWNS,
+  MEMBER_EMAILS_PER_TXN,
+  RECIPIENT_COOLDOWN_MS,
   MEMBER_EMAIL_TOKENS,
   NOT_ACTIVE_MEMBER,
   VERIFY_LOGIN_EMAIL,
@@ -103,6 +110,22 @@ async function mailedToken(to: string): Promise<string> {
   );
   expect(match).not.toBeNull();
   return decodeURIComponent(match![1]!);
+}
+
+/**
+ * Makes the next Auth getUser call fail as an outage would (not with
+ * auth/user-not-found), and silences the error the callable logs for it.
+ * Returns the undo.
+ */
+function failAuthLookupOnce(): () => void {
+  const lookup = vi
+    .spyOn(getAuth(), 'getUser')
+    .mockRejectedValueOnce(new Error('auth backend unreachable'));
+  const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  return () => {
+    lookup.mockRestore();
+    log.mockRestore();
+  };
 }
 
 const sha256 = (value: string) =>
@@ -194,7 +217,7 @@ describe('requestMemberEmailChange', () => {
     expect(await mailTo(s.loginEmail.toUpperCase())).toHaveLength(0);
   });
 
-  // Fix round 1, I1: uids are free, so an unverified account must not be
+  // Uids are free, so an unverified account must not be
   // able to mail anyone (the per-uid limit would not bound it).
   it('refuses a caller whose login email is not verified, mailing nothing', async () => {
     const unverified = await seedLinkedMember({ emailVerified: false });
@@ -214,6 +237,28 @@ describe('requestMemberEmailChange', () => {
     expect(await memberEmail(unverified.memberRef)).toMatchObject({
       email: unverified.memberEmail,
     });
+  });
+
+  // A failed Auth lookup is an outage, not an unverified login email,
+  // so it gets a retryable code and the user is not told to verify.
+  it('answers unavailable, mailing nothing, when the Auth lookup fails', async () => {
+    const s = await seedLinkedMember();
+    const newEmail = uniqueEmail('new');
+    const restore = failAuthLookupOnce();
+    try {
+      await expect(request(s, newEmail)).rejects.toMatchObject({
+        code: 'unavailable',
+        message: AUTH_LOOKUP_UNAVAILABLE,
+      });
+    } finally {
+      restore();
+    }
+    expect(await mailTo(newEmail)).toHaveLength(0);
+    expect(await memberEmail(s.memberRef)).toMatchObject({
+      email: s.memberEmail,
+    });
+    // The same request goes through once the lookup works again.
+    await expect(request(s, newEmail)).resolves.toEqual({ status: 'pending' });
   });
 
   // M2: someone who left the group can't use it (nor probe its addresses).
@@ -360,6 +405,175 @@ describe('requestMemberEmailChange', () => {
     });
   });
 
+  describe('per-recipient cooldown', () => {
+    const cooldownDoc = (address: string) =>
+      db
+        .collection(MEMBER_EMAIL_RECIPIENT_COOLDOWNS)
+        .doc(sha256(address.toLowerCase()));
+    const COOLDOWN_REFUSAL = {
+      code: 'resource-exhausted',
+      message: CONFIRMATION_RECENTLY_SENT,
+    };
+
+    it('is one confirmation mail per address per hour', () => {
+      expect(RECIPIENT_COOLDOWN_MS).toBe(60 * 60 * 1000);
+    });
+
+    it('refuses a second confirmation to the same address from another caller', async () => {
+      const first = await seedLinkedMember();
+      const second = await seedLinkedMember();
+      const target = uniqueEmail('target');
+
+      await expect(request(first, target)).resolves.toEqual({
+        status: 'pending',
+      });
+      // Another account, another group, the address in another casing.
+      await expect(request(second, target.toUpperCase())).rejects.toMatchObject(
+        COOLDOWN_REFUSAL
+      );
+      expect(await mailTo(target)).toHaveLength(1);
+      expect(await mailTo(target.toUpperCase())).toHaveLength(0);
+      // The same caller again is refused the same way.
+      await expect(request(first, target)).rejects.toMatchObject(
+        COOLDOWN_REFUSAL
+      );
+      expect(await mailTo(target)).toHaveLength(1);
+    });
+
+    it('does not use up the caller’s daily allowance when it refuses', async () => {
+      const first = await seedLinkedMember();
+      const second = await seedLinkedMember();
+      const target = uniqueEmail('target');
+      await request(first, target);
+
+      for (let i = 0; i < EMAIL_CHANGE_LIMIT + 1; i++) {
+        await expect(request(second, target)).rejects.toMatchObject(
+          COOLDOWN_REFUSAL
+        );
+      }
+      expect(
+        (await db.collection(MEMBER_EMAIL_LIMITS).doc(second.uid).get()).exists
+      ).toBe(false);
+      // All of the second caller's requests are still there to use.
+      for (let i = 0; i < EMAIL_CHANGE_LIMIT; i++) {
+        await expect(
+          request(second, uniqueEmail(`after-${i}`))
+        ).resolves.toEqual({ status: 'pending' });
+      }
+    });
+
+    // A caller who loses a race for the address (both passed the
+    // first read; the winner's transaction committed first) is refused by
+    // the transaction's re-check, and gets the request it was charged back.
+    it('refunds the allowance of a caller who loses the race for an address', async () => {
+      const s = await seedLinkedMember();
+      const target = uniqueEmail('raced');
+      const runTransaction = db.runTransaction.bind(db);
+      // The first transaction is consumeRequestAllowance: the winner's
+      // cooldown lands just before it, after the plain read.
+      const spy = vi
+        .spyOn(db, 'runTransaction')
+        .mockImplementationOnce(async (fn: any, options?: any) => {
+          await cooldownDoc(target).set({
+            sentAt: Timestamp.now(),
+            expiresAt: Timestamp.fromMillis(Date.now() + RECIPIENT_COOLDOWN_MS),
+          });
+          return runTransaction(fn, options);
+        });
+      try {
+        await expect(request(s, target)).rejects.toMatchObject(
+          COOLDOWN_REFUSAL
+        );
+      } finally {
+        spy.mockRestore();
+      }
+      expect(await mailTo(target)).toHaveLength(0);
+      const limit = await db.collection(MEMBER_EMAIL_LIMITS).doc(s.uid).get();
+      expect(limit.get('count') ?? 0).toBe(0);
+    });
+
+    // A refund that fails is logged, and the caller still sees the cooldown
+    // refusal rather than the refund's error.
+    it('still answers a lost race with the cooldown when the refund fails', async () => {
+      const s = await seedLinkedMember();
+      const target = uniqueEmail('raced-refund');
+      const runTransaction = db.runTransaction.bind(db);
+      const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {});
+      // Transactions in order: the allowance, the send (refused by the
+      // re-check), then the refund, which fails here.
+      const spy = vi
+        .spyOn(db, 'runTransaction')
+        .mockImplementationOnce(async (fn: any, options?: any) => {
+          await cooldownDoc(target).set({
+            sentAt: Timestamp.now(),
+            expiresAt: Timestamp.fromMillis(Date.now() + RECIPIENT_COOLDOWN_MS),
+          });
+          return runTransaction(fn, options);
+        })
+        .mockImplementationOnce(runTransaction as any)
+        .mockImplementationOnce(async () => {
+          throw new Error('refund write failed');
+        });
+      try {
+        await expect(request(s, target)).rejects.toMatchObject(
+          COOLDOWN_REFUSAL
+        );
+        expect(errorLog).toHaveBeenCalledWith(
+          expect.stringContaining(s.uid),
+          expect.objectContaining({ message: 'refund write failed' })
+        );
+      } finally {
+        spy.mockRestore();
+        errorLog.mockRestore();
+      }
+      expect(await mailTo(target)).toHaveLength(0);
+    });
+
+    it('stores only a hash of the lowercased address, with an expiry', async () => {
+      const s = await seedLinkedMember();
+      const target = uniqueEmail('Target');
+      const before = Date.now();
+      await request(s, target);
+
+      const snap = await cooldownDoc(target).get();
+      expect(snap.exists).toBe(true);
+      expect(JSON.stringify(snap.data())).not.toContain(target.toLowerCase());
+      expect(JSON.stringify(snap.data())).not.toContain(target);
+      const expiresAt = (snap.get('expiresAt') as Timestamp).toMillis();
+      expect(expiresAt).toBeGreaterThanOrEqual(before + RECIPIENT_COOLDOWN_MS);
+      expect(expiresAt).toBeLessThanOrEqual(Date.now() + RECIPIENT_COOLDOWN_MS);
+    });
+
+    it('allows the address again once the hour has passed', async () => {
+      const first = await seedLinkedMember();
+      const second = await seedLinkedMember();
+      const target = uniqueEmail('target');
+      await request(first, target);
+      await cooldownDoc(target).update({
+        expiresAt: Timestamp.fromMillis(Date.now() - 1000),
+      });
+
+      await expect(request(second, target)).resolves.toEqual({
+        status: 'pending',
+      });
+      expect(await mailTo(target)).toHaveLength(2);
+    });
+
+    it('leaves no cooldown when nothing was mailed', async () => {
+      const s = await seedLinkedMember();
+      const taken = uniqueEmail('taken');
+      await makeMember(s.groupRef, { email: taken, emailLower: taken });
+      await expect(request(s, taken)).rejects.toMatchObject({
+        code: 'already-exists',
+      });
+      await expect(request(s, s.loginEmail)).resolves.toEqual({
+        status: 'updated',
+      });
+      expect((await cooldownDoc(taken).get()).exists).toBe(false);
+      expect((await cooldownDoc(s.loginEmail).get()).exists).toBe(false);
+    });
+  });
+
   // M1: an address applied at once cancels any link still pending.
   it('cancels an earlier pending link when the verified address is applied', async () => {
     const s = await seedLinkedMember();
@@ -388,7 +602,9 @@ describe('requestMemberEmailChange', () => {
 });
 
 describe('confirmMemberEmailChange', () => {
-  async function pending(): Promise<Seeded & { newEmail: string; token: string }> {
+  async function pending(): Promise<
+    Seeded & { newEmail: string; token: string }
+  > {
     const s = await seedLinkedMember();
     const newEmail = uniqueEmail('New');
     await request(s, newEmail);
@@ -486,6 +702,28 @@ describe('confirmMemberEmailChange', () => {
     });
   });
 
+  it('answers unavailable, keeping the link, when the Auth lookup fails', async () => {
+    const p = await pending();
+    const restore = failAuthLookupOnce();
+    try {
+      await expect(
+        call(confirmMemberEmailChange, p.uid, { token: p.token })
+      ).rejects.toMatchObject({
+        code: 'unavailable',
+        message: AUTH_LOOKUP_UNAVAILABLE,
+      });
+    } finally {
+      restore();
+    }
+    expect(await memberEmail(p.memberRef)).toMatchObject({
+      email: p.memberEmail,
+    });
+    // The link still works: retrying is the remedy.
+    await expect(
+      call(confirmMemberEmailChange, p.uid, { token: p.token })
+    ).resolves.toMatchObject({ email: p.newEmail });
+  });
+
   it('refuses when the member left the group meanwhile', async () => {
     const p = await pending();
     await p.memberRef.update({ active: false, leftGroup: true });
@@ -530,8 +768,430 @@ describe('confirmMemberEmailChange', () => {
   });
 });
 
+describe('updateMemberEmails', () => {
+  interface Linked {
+    uid: string;
+    loginEmail: string;
+    userRef: DocumentReference;
+  }
+
+  /**
+   * A verified (by default) Auth account and its users doc, no members.
+   * `loginEmail` overrides the Auth address; `profileEmail` gives the users
+   * doc a different (stale) one.
+   */
+  async function seedUser(
+    options: {
+      emailVerified?: boolean;
+      auth?: boolean;
+      loginEmail?: string;
+      profileEmail?: string;
+    } = {}
+  ): Promise<Linked> {
+    const uid = uniqueId('u');
+    const loginEmail = options.loginEmail ?? uniqueEmail('login');
+    if (options.auth !== false) {
+      await getAuth().createUser({
+        uid,
+        email: loginEmail,
+        emailVerified: options.emailVerified ?? true,
+      });
+    }
+    const userRef = db.collection('users').doc(uid);
+    const profileEmail = options.profileEmail ?? loginEmail;
+    await userRef.set({
+      email: profileEmail,
+      emailLower: profileEmail.toLowerCase(),
+    });
+    return { uid, loginEmail, userRef };
+  }
+
+  /** A member of a fresh group (or `group`) linked to `user`, on `email`. */
+  async function linkedRow(
+    user: Linked,
+    email: string,
+    fields: DocumentData = {},
+    group?: DocumentReference
+  ): Promise<DocumentReference> {
+    const groupRef = group ?? (await makeGroup({ name: `G ${randomUUID()}` }));
+    return makeMember(groupRef, {
+      email,
+      emailLower: email.toLowerCase(),
+      userRef: user.userRef,
+      ...fields,
+    });
+  }
+
+  function update(user: Linked | null, data: unknown = {}): Promise<any> {
+    return call(updateMemberEmails, user?.uid ?? null, data);
+  }
+
+  /** A pending confirmation link for `memberRef`, as edit-member makes one. */
+  async function pendingLink(
+    user: Linked,
+    memberRef: DocumentReference
+  ): Promise<string> {
+    const to = uniqueEmail('pending');
+    await expect(
+      call(requestMemberEmailChange, user.uid, {
+        groupId: memberRef.parent.parent!.id,
+        memberId: memberRef.id,
+        email: to,
+      })
+    ).resolves.toEqual({ status: 'pending' });
+    return mailedToken(to);
+  }
+
+  const tokenExists = async (token: string) =>
+    (await db.collection(MEMBER_EMAIL_TOKENS).doc(sha256(token)).get()).exists;
+
+  it('rejects a signed-out caller', async () => {
+    await expect(update(null)).rejects.toMatchObject({
+      code: 'unauthenticated',
+    });
+  });
+
+  it('refuses a caller whose login email is not verified, writing nothing', async () => {
+    const unverified = await seedUser({ emailVerified: false });
+    const noAuth = await seedUser({ auth: false });
+    for (const user of [unverified, noAuth]) {
+      const other = uniqueEmail('other');
+      const row = await linkedRow(user, other);
+      await expect(update(user)).rejects.toMatchObject({
+        code: 'permission-denied',
+        message: VERIFY_LOGIN_EMAIL,
+      });
+      expect(await memberEmail(row)).toEqual({
+        email: other,
+        emailLower: other,
+      });
+    }
+  });
+
+  it('answers unavailable, writing nothing, when the Auth lookup fails', async () => {
+    const user = await seedUser();
+    const other = uniqueEmail('other');
+    const row = await linkedRow(user, other);
+    const restore = failAuthLookupOnce();
+    try {
+      await expect(update(user)).rejects.toMatchObject({
+        code: 'unavailable',
+        message: AUTH_LOOKUP_UNAVAILABLE,
+      });
+    } finally {
+      restore();
+    }
+    expect(await memberEmail(row)).toEqual({ email: other, emailLower: other });
+  });
+
+  it('refuses an onlyFromEmail that is not a string', async () => {
+    const user = await seedUser();
+    const other = uniqueEmail('other');
+    const row = await linkedRow(user, other);
+    for (const onlyFromEmail of [
+      42,
+      ['a@b.test'],
+      { a: 1 },
+      'x'.repeat(1001),
+    ]) {
+      await expect(update(user, { onlyFromEmail })).rejects.toMatchObject({
+        code: 'invalid-argument',
+      });
+    }
+    expect(await memberEmail(row)).toMatchObject({ email: other });
+  });
+
+  it('moves every linked row to the verified login email (all mode)', async () => {
+    const user = await seedUser();
+    const old = uniqueEmail('old');
+    const custom = uniqueEmail('custom');
+    const rows = [
+      await linkedRow(user, old),
+      await linkedRow(user, custom),
+      await linkedRow(user, ''),
+    ];
+
+    await expect(update(user)).resolves.toEqual({ updated: 3, conflicts: 0 });
+
+    for (const row of rows) {
+      expect(await memberEmail(row)).toEqual({
+        email: user.loginEmail,
+        emailLower: user.loginEmail,
+      });
+    }
+    // Nothing left to do the second time.
+    await expect(update(user)).resolves.toEqual({ updated: 0, conflicts: 0 });
+  });
+
+  it('moves only the rows on onlyFromEmail, ignoring case (old-only mode)', async () => {
+    const user = await seedUser();
+    const old = uniqueEmail('old');
+    const custom = uniqueEmail('custom');
+    const onOld = await linkedRow(user, old);
+    const onOldUpper = await linkedRow(user, old.toUpperCase());
+    const onCustom = await linkedRow(user, custom);
+    const blank = await linkedRow(user, '');
+
+    await expect(
+      update(user, { onlyFromEmail: ` ${old.toUpperCase()} ` })
+    ).resolves.toEqual({ updated: 2, conflicts: 0 });
+
+    for (const row of [onOld, onOldUpper]) {
+      expect(await memberEmail(row)).toEqual({
+        email: user.loginEmail,
+        emailLower: user.loginEmail,
+      });
+    }
+    expect(await memberEmail(onCustom)).toEqual({
+      email: custom,
+      emailLower: custom,
+    });
+    expect(await memberEmail(blank)).toMatchObject({ email: '' });
+  });
+
+  it('skips a row already on the login email in another casing, leaving it as is', async () => {
+    const user = await seedUser();
+    const upper = user.loginEmail.toUpperCase();
+    const row = await linkedRow(user, upper);
+
+    await expect(update(user)).resolves.toEqual({ updated: 0, conflicts: 0 });
+    await expect(update(user, { onlyFromEmail: upper })).resolves.toEqual({
+      updated: 0,
+      conflicts: 0,
+    });
+
+    expect(await memberEmail(row)).toEqual({
+      email: upper,
+      emailLower: user.loginEmail,
+    });
+  });
+
+  // M2: the duplicate check the callables enforce applies here too.
+  it('counts a row whose group already has the address as a conflict and leaves it', async () => {
+    const user = await seedUser();
+    const old = uniqueEmail('old');
+    const free = await linkedRow(user, old);
+    const crowded = await linkedRow(user, old);
+    // Someone else in that group already uses the login address.
+    await makeMember(crowded.parent.parent!, {
+      email: user.loginEmail.toUpperCase(),
+      emailLower: user.loginEmail,
+    });
+
+    await expect(update(user)).resolves.toEqual({ updated: 1, conflicts: 1 });
+
+    expect(await memberEmail(free)).toMatchObject({ email: user.loginEmail });
+    expect(await memberEmail(crowded)).toEqual({ email: old, emailLower: old });
+  });
+
+  it('gives the address to only one of two rows linked in the same group', async () => {
+    const user = await seedUser();
+    const group = await makeGroup();
+    const a = await linkedRow(user, uniqueEmail('a'), {}, group);
+    const b = await linkedRow(user, uniqueEmail('b'), {}, group);
+
+    await expect(update(user)).resolves.toEqual({ updated: 1, conflicts: 1 });
+
+    const emails = [(await memberEmail(a)).email, (await memberEmail(b)).email];
+    expect(emails.filter((e) => e === user.loginEmail)).toHaveLength(1);
+  });
+
+  // M1: an update cancels the row's pending confirmation link, and only the
+  // updated rows'.
+  it('deletes the pending links of the rows it updates, and only theirs', async () => {
+    const user = await seedUser();
+    const old = uniqueEmail('old');
+    const updatedRow = await linkedRow(user, old);
+    const keptRow = await linkedRow(user, uniqueEmail('kept'));
+    const conflictRow = await linkedRow(user, old);
+    await makeMember(conflictRow.parent.parent!, {
+      email: user.loginEmail,
+      emailLower: user.loginEmail,
+    });
+    const updatedToken = await pendingLink(user, updatedRow);
+    const keptToken = await pendingLink(user, keptRow);
+    const conflictToken = await pendingLink(user, conflictRow);
+
+    await expect(update(user, { onlyFromEmail: old })).resolves.toEqual({
+      updated: 1,
+      conflicts: 1,
+    });
+
+    expect(await tokenExists(updatedToken)).toBe(false);
+    expect(await tokenExists(keptToken)).toBe(true);
+    expect(await tokenExists(conflictToken)).toBe(true);
+  });
+
+  it('makes an old confirmation link fail after the update (M1)', async () => {
+    const user = await seedUser();
+    const row = await linkedRow(user, uniqueEmail('old'));
+    const token = await pendingLink(user, row);
+
+    await expect(update(user)).resolves.toEqual({ updated: 1, conflicts: 0 });
+
+    await expect(
+      call(confirmMemberEmailChange, user.uid, { token })
+    ).rejects.toMatchObject({
+      code: 'failed-precondition',
+      message: CONFIRM_LINK_INVALID,
+    });
+    expect(await memberEmail(row)).toEqual({
+      email: user.loginEmail,
+      emailLower: user.loginEmail,
+    });
+  });
+
+  it('leaves rows linked to another user, and unlinked rows, untouched', async () => {
+    const user = await seedUser();
+    const other = await seedUser();
+    const old = uniqueEmail('old');
+    const group = await makeGroup();
+    const own = await linkedRow(user, old, {}, group);
+    const othersRow = await linkedRow(other, old);
+    const unlinked = await makeMember(await makeGroup(), {
+      email: old,
+      emailLower: old,
+    });
+
+    await expect(update(user)).resolves.toEqual({ updated: 1, conflicts: 0 });
+
+    expect(await memberEmail(own)).toMatchObject({ email: user.loginEmail });
+    expect(await memberEmail(othersRow)).toEqual({
+      email: old,
+      emailLower: old,
+    });
+    expect(await memberEmail(unlinked)).toEqual({
+      email: old,
+      emailLower: old,
+    });
+  });
+
+  // The scope is the client's former #linkedMembersQuery, which
+  // has no active filter, so inactive and left memberships move too.
+  it('includes inactive and left memberships', async () => {
+    const user = await seedUser();
+    const deactivated = await linkedRow(user, uniqueEmail('d'), {
+      active: false,
+    });
+    const left = await linkedRow(user, uniqueEmail('l'), {
+      active: false,
+      leftGroup: true,
+    });
+
+    await expect(update(user)).resolves.toEqual({ updated: 2, conflicts: 0 });
+
+    for (const row of [deactivated, left]) {
+      expect(await memberEmail(row)).toMatchObject({ email: user.loginEmail });
+    }
+  });
+
+  it('returns zeros for a user with no memberships', async () => {
+    const user = await seedUser();
+    await expect(update(user)).resolves.toEqual({ updated: 0, conflicts: 0 });
+  });
+
+  // A legacy Auth address that fails the single-address rule: no member doc
+  // may hold it, and retrying can't help.
+  it('refuses a verified login email that is not one valid address, writing nothing', async () => {
+    const loginEmail = `login-${randomUUID()}@member_email.test`;
+    const user = await seedUser({ loginEmail });
+    const other = uniqueEmail('other');
+    const row = await linkedRow(user, other);
+
+    await expect(update(user)).rejects.toMatchObject({
+      code: 'failed-precondition',
+      message: LOGIN_EMAIL_INVALID,
+    });
+
+    expect(await memberEmail(row)).toEqual({ email: other, emailLower: other });
+  });
+
+  // The address is the Auth account's, never the
+  // users doc's (which can lag a login-email change).
+  it('writes the Auth account’s address even when the users doc is stale', async () => {
+    const stale = uniqueEmail('stale-profile');
+    const user = await seedUser({ profileEmail: stale });
+    const row = await linkedRow(user, uniqueEmail('old'));
+
+    await expect(update(user)).resolves.toEqual({ updated: 1, conflicts: 0 });
+
+    expect(await memberEmail(row)).toEqual({
+      email: user.loginEmail,
+      emailLower: user.loginEmail,
+    });
+  });
+
+  // A row unlinked after the query but before the transaction is
+  // re-checked inside it and left alone.
+  it('skips a row that was unlinked between the query and the transaction', async () => {
+    const user = await seedUser();
+    const old = uniqueEmail('old');
+    const kept = await linkedRow(user, old);
+    const unlinked = await linkedRow(user, old);
+    const runTransaction = db.runTransaction.bind(db);
+    const spy = vi
+      .spyOn(db, 'runTransaction')
+      .mockImplementationOnce(async (fn: any, options?: any) => {
+        await unlinked.update({ userRef: null });
+        return runTransaction(fn, options);
+      });
+    try {
+      await expect(update(user)).resolves.toEqual({ updated: 1, conflicts: 0 });
+      expect(spy).toHaveBeenCalledTimes(1);
+    } finally {
+      spy.mockRestore();
+    }
+
+    expect(await memberEmail(kept)).toMatchObject({ email: user.loginEmail });
+    expect(await memberEmail(unlinked)).toEqual({
+      email: old,
+      emailLower: old,
+    });
+  });
+
+  // More rows than one transaction takes are split across
+  // transactions, and every row is still written.
+  it('updates more memberships than one transaction holds, in several transactions', async () => {
+    const user = await seedUser();
+    const old = uniqueEmail('old');
+    const count = MEMBER_EMAILS_PER_TXN + 1;
+    const rows: DocumentReference[] = [];
+    const batch = db.batch();
+    for (let i = 0; i < count; i++) {
+      const group = db.collection('groups').doc(uniqueId('g-chunk'));
+      batch.set(group, { name: `Chunk ${i}` });
+      const row = group.collection('members').doc(uniqueId('m'));
+      batch.set(row, {
+        displayName: 'Member',
+        active: true,
+        groupAdmin: false,
+        email: old,
+        emailLower: old,
+        userRef: user.userRef,
+      });
+      rows.push(row);
+    }
+    await batch.commit();
+    const spy = vi.spyOn(db, 'runTransaction');
+    try {
+      await expect(update(user)).resolves.toEqual({
+        updated: count,
+        conflicts: 0,
+      });
+      expect(spy).toHaveBeenCalledTimes(2);
+    } finally {
+      spy.mockRestore();
+    }
+
+    const emails = await Promise.all(
+      rows.map(async (row) => (await memberEmail(row)).email)
+    );
+    expect(new Set(emails)).toEqual(new Set([user.loginEmail]));
+  });
+});
+
 describe('deleteExpiredMemberEmailChanges', () => {
-  it('deletes expired tokens and ended rate-limit windows only', async () => {
+  it('deletes expired tokens, ended rate-limit windows and cooldowns only', async () => {
     const nowMs = Date.now();
     const tokens = db.collection(MEMBER_EMAIL_TOKENS);
     const limits = db.collection(MEMBER_EMAIL_LIMITS);
@@ -549,6 +1209,11 @@ describe('deleteExpiredMemberEmailChanges', () => {
       windowStart: Timestamp.fromMillis(nowMs - 60_000),
       count: 5,
     });
+    const cooldowns = db.collection(MEMBER_EMAIL_RECIPIENT_COOLDOWNS);
+    const endedCooldown = cooldowns.doc(sha256(uniqueId('ended')));
+    const liveCooldown = cooldowns.doc(sha256(uniqueId('live')));
+    await endedCooldown.set({ expiresAt: Timestamp.fromMillis(nowMs - 1000) });
+    await liveCooldown.set({ expiresAt: Timestamp.fromMillis(nowMs + 60_000) });
 
     const deleted = await deleteExpiredMemberEmailChanges(nowMs);
 
@@ -559,5 +1224,8 @@ describe('deleteExpiredMemberEmailChanges', () => {
     expect((await live.get()).exists).toBe(true);
     expect((await oldWindow.get()).exists).toBe(false);
     expect((await currentWindow.get()).exists).toBe(true);
+    expect(deleted.cooldowns).toBeGreaterThanOrEqual(1);
+    expect((await endedCooldown.get()).exists).toBe(false);
+    expect((await liveCooldown.get()).exists).toBe(true);
   });
 });

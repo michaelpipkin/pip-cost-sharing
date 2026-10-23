@@ -320,9 +320,11 @@ export function createMockUserService() {
     sendPaymentRequestEmail: vi.fn().mockResolvedValue('sent'),
     sendGroupPaymentRequestEmails: vi
       .fn()
-      .mockResolvedValue({ sent: 0, skipped: 0 }),
+      .mockResolvedValue({ sent: 0, skipped: 0, limitReached: false }),
     sendMemberPaymentUnpayEmails: vi.fn().mockResolvedValue(undefined),
-    sendGroupSettleUnpayEmails: vi.fn().mockResolvedValue(undefined),
+    sendGroupSettleUnpayEmails: vi
+      .fn()
+      .mockResolvedValue({ sent: 0, limitReached: false }),
   };
 }
 

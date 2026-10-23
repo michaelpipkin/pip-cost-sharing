@@ -1,36 +1,50 @@
 import { createHash, randomBytes } from 'node:crypto';
-import { getAuth } from 'firebase-admin/auth';
+import { getAuth, type UserRecord } from 'firebase-admin/auth';
 import {
   DocumentReference,
   getFirestore,
   Timestamp,
   type DocumentData,
+  type DocumentSnapshot,
   type Firestore,
   type Query,
   type QuerySnapshot,
   type Transaction,
 } from 'firebase-admin/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
-import { APP_BASE_URL, callableAppCheck, normalizeEmail } from './common';
-import { buildEmailHtml, escapeHtml, isSingleEmailAddress } from './email-builders';
+import {
+  APP_BASE_URL,
+  callableAppCheck,
+  deleteDocsIfUnchanged,
+  normalizeEmail,
+} from './common';
+import {
+  buildEmailHtml,
+  escapeHtml,
+  isSingleEmailAddress,
+} from './email-builders';
 
 // ---------------------------------------------------------------------------
 // Verified group emails (Plan 4 B19). All group mail goes to the member's
 // group email (groups/{gid}/members/{mid}.email), so a LINKED member's email
 // must always be an address the linked user has proven they own
-// (group-mail-recipient.ts). firestore.rules lets a member write their own
-// linked email only when it is their verified sign-in address; any other
-// address goes through these two callables:
+// (group-mail-recipient.ts). firestore.rules lets no client change a linked
+// member's email at all; every change goes through these callables:
 //  - requestMemberEmailChange: the member asks for a new group email. Their
 //    verified sign-in address is applied at once; any other address gets a
 //    one-time confirmation link, mailed to that address.
 //  - confirmMemberEmailChange: the link's page (/auth/confirm-group-email)
 //    applies the address, once, for the account that asked.
+//  - updateMemberEmails: Account > Profile's Sync and the "Update your group
+//    emails?" dialog move every linked membership to the verified sign-in
+//    address, with the same duplicate check and link cancellation.
 // The confirmation mail holds no user-controlled text (no display name,
 // group name or other address): the request can name any address, so
 // anything the caller controls in the mail would make this a spam relay
 // (Ruling R18). Requests are capped per uid (EMAIL_CHANGE_LIMIT per fixed
-// window) for the same reason.
+// window) for the same reason, and per recipient (one confirmation mail per
+// address per RECIPIENT_COOLDOWN_MS, from any caller), so throwaway accounts
+// can't multiply the per-uid cap against one address.
 //
 // getFirestore() is called inside each handler rather than at module scope:
 // index.ts imports (and so evaluates) this module before it calls
@@ -41,6 +55,13 @@ import { buildEmailHtml, escapeHtml, isSingleEmailAddress } from './email-builde
 export const MEMBER_EMAIL_TOKENS = 'memberEmailChangeTokens';
 /** Per-uid request counters. Server-only (rules deny all). */
 export const MEMBER_EMAIL_LIMITS = 'memberEmailChangeLimits';
+/**
+ * Per-recipient cooldowns, keyed by sha256 of the lowercased address so no
+ * raw address is a doc id: { sentAt, expiresAt }. Server-only (rules deny
+ * all). The nightly cleanup deletes ended ones; a Firestore TTL policy on
+ * expiresAt could do the same (not configured in production).
+ */
+export const MEMBER_EMAIL_RECIPIENT_COOLDOWNS = 'memberEmailRecipientCooldown';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** Requests that mail a link, per uid per fixed window. */
@@ -48,6 +69,8 @@ export const EMAIL_CHANGE_LIMIT = 5;
 export const EMAIL_CHANGE_WINDOW_MS = DAY_MS;
 /** How long a confirmation link works. */
 export const EMAIL_CHANGE_TOKEN_TTL_MS = DAY_MS;
+/** One confirmation mail per address per this long, from any caller. */
+export const RECIPIENT_COOLDOWN_MS = 60 * 60 * 1000;
 
 /**
  * The stable failed-precondition messages the confirm page tells apart
@@ -58,10 +81,28 @@ export const CONFIRM_LINK_INVALID =
 export const CONFIRM_MEMBER_UNLINKED =
   'This group membership is no longer linked to your account.';
 
+/** resource-exhausted: the address got a confirmation mail within the hour. */
+export const CONFIRMATION_RECENTLY_SENT =
+  'A confirmation email was sent to that address recently. Try again in an hour.';
+
 export const DUPLICATE_MEMBER_EMAIL =
   'A member with this email address already exists in the group.';
 /** permission-denied: the caller's own login email is not verified. */
 export const VERIFY_LOGIN_EMAIL = 'Verify your login email first.';
+/**
+ * unavailable: the Auth lookup behind VERIFY_LOGIN_EMAIL failed (an outage,
+ * not an answer), so the caller should simply retry. The app matches this
+ * text (src/app/utilities/callable-error.util.ts).
+ */
+export const AUTH_LOOKUP_UNAVAILABLE =
+  "Couldn't check your account right now. Please try again.";
+/**
+ * failed-precondition (updateMemberEmails): the verified login email is not
+ * one valid address (a legacy account), so no member doc may hold it. The
+ * app matches this text (src/app/utilities/callable-error.util.ts).
+ */
+export const LOGIN_EMAIL_INVALID =
+  'Your login email is not a single valid email address.';
 /** permission-denied: the token belongs to another account. */
 export const CONFIRM_WRONG_ACCOUNT =
   'Sign in with the account that requested this change.';
@@ -70,9 +111,13 @@ export const NOT_ACTIVE_MEMBER = 'User must be an active member of the group';
 
 export type MemberEmailChangeStatus = 'unchanged' | 'updated' | 'pending';
 
+function sha256Hex(value: string): string {
+  return createHash('sha256').update(value).digest('hex');
+}
+
 /** The token's doc id: its sha256, hex. The token itself is never stored. */
 export function hashEmailChangeToken(token: string): string {
-  return createHash('sha256').update(token).digest('hex');
+  return sha256Hex(token);
 }
 
 export function emailChangeConfirmLink(token: string): string {
@@ -128,7 +173,9 @@ function isDocId(value: unknown): value is string {
 
 function isLinkedTo(member: DocumentData | undefined, uid: string): boolean {
   const userRef: unknown = member?.['userRef'];
-  return userRef instanceof DocumentReference && userRef.path === `users/${uid}`;
+  return (
+    userRef instanceof DocumentReference && userRef.path === `users/${uid}`
+  );
 }
 
 /**
@@ -144,17 +191,22 @@ function assertActive(member: DocumentData | undefined): void {
 }
 
 /**
- * The caller's verified Auth address, lowercased. Refuses an unverified (or
- * missing) account: uids are free, so without this the per-uid limit would
- * not bound the mail an attacker could send (fix round 1, I1). The app's
+ * The caller's verified Auth address, as stored and lowercased. Refuses an
+ * unverified (or missing) account: uids are free, so without this the
+ * per-uid limit would not bound the mail an attacker could send. The app's
  * confirm page is behind authGuard, which requires a verified account too.
+ * A lookup that fails for any other reason is `unavailable`
+ * (AUTH_LOOKUP_UNAVAILABLE): it says nothing about the account, so it must
+ * not send the user off to verify their email.
  */
-async function requireVerifiedCaller(uid: string): Promise<string> {
-  const emailLower = await verifiedAuthEmailLower(uid);
-  if (!emailLower) {
+async function requireVerifiedCaller(
+  uid: string
+): Promise<{ email: string; emailLower: string }> {
+  const email = await verifiedAuthEmail(uid);
+  if (!email) {
     throw new HttpsError('permission-denied', VERIFY_LOGIN_EMAIL);
   }
-  return emailLower;
+  return { email, emailLower: normalizeEmail(email) };
 }
 
 /** The member's pending confirmation tokens, read inside `txn`. */
@@ -170,34 +222,76 @@ async function pendingTokensOf(
   return snap.docs.map((d) => d.ref);
 }
 
-/** The caller's Auth address when it is verified, lowercased; else null. */
-async function verifiedAuthEmailLower(uid: string): Promise<string | null> {
+/**
+ * The caller's Auth address (as stored) when it is verified; null when it is
+ * not, or when the account does not exist. Any other lookup failure throws
+ * `unavailable`.
+ */
+async function verifiedAuthEmail(uid: string): Promise<string | null> {
+  let record: UserRecord;
   try {
-    const record = await getAuth().getUser(uid);
-    return record.emailVerified && record.email
-      ? normalizeEmail(record.email)
-      : null;
-  } catch {
-    return null;
+    record = await getAuth().getUser(uid);
+  } catch (error) {
+    if ((error as { code?: unknown } | null)?.code === 'auth/user-not-found') {
+      return null;
+    }
+    console.error(`Auth lookup failed for ${uid}:`, error);
+    throw new HttpsError('unavailable', AUTH_LOOKUP_UNAVAILABLE);
   }
+  return record.emailVerified && record.email ? record.email : null;
 }
 
 /**
- * Refuses an address another member of the same group already has (the
+ * Whether another member of the same group already has the address (the
  * app's own duplicate check, member.service updateMember). `read` runs the
  * query: a transaction's get inside one, else a plain get.
  */
+async function otherMemberHas(
+  read: (query: Query) => Promise<QuerySnapshot>,
+  memberRef: DocumentReference,
+  emailLower: string
+): Promise<boolean> {
+  const clash = await read(
+    memberRef.parent.where('emailLower', '==', emailLower).limit(2)
+  );
+  return clash.docs.some((d) => d.id !== memberRef.id);
+}
+
+/** Refuses an address another member of the same group already has. */
 async function assertNoOtherMemberHas(
   read: (query: Query) => Promise<QuerySnapshot>,
   memberRef: DocumentReference,
   emailLower: string
 ): Promise<void> {
-  const clash = await read(
-    memberRef.parent.where('emailLower', '==', emailLower).limit(2)
-  );
-  if (clash.docs.some((d) => d.id !== memberRef.id)) {
+  if (await otherMemberHas(read, memberRef, emailLower)) {
     throw new HttpsError('already-exists', DUPLICATE_MEMBER_EMAIL);
   }
+}
+
+/** The address's cooldown doc: sha256 of the lowercased address. */
+function recipientCooldownRef(
+  db: Firestore,
+  emailLower: string
+): DocumentReference {
+  return db
+    .collection(MEMBER_EMAIL_RECIPIENT_COOLDOWNS)
+    .doc(sha256Hex(emailLower));
+}
+
+/** Refuses an address whose cooldown (if any) has not ended at `nowMs`. */
+function assertNotCoolingDown(snap: DocumentSnapshot, nowMs: number): void {
+  const expiresAt: unknown = snap.get('expiresAt');
+  if (expiresAt instanceof Timestamp && expiresAt.toMillis() > nowMs) {
+    throw new HttpsError('resource-exhausted', CONFIRMATION_RECENTLY_SENT);
+  }
+}
+
+function isCooldownRefusal(error: unknown): boolean {
+  return (
+    error instanceof HttpsError &&
+    error.code === 'resource-exhausted' &&
+    error.message === CONFIRMATION_RECENTLY_SENT
+  );
 }
 
 /** Counts one mailed request against the caller's window, or refuses it. */
@@ -233,13 +327,40 @@ async function consumeRequestAllowance(
 }
 
 /**
+ * Gives back one request `consumeRequestAllowance` charged in the window
+ * that started at or before `nowMs`: used when the send it paid for was
+ * refused by the recipient cooldown after all (a lost race). A window that
+ * has rolled over since is left alone.
+ */
+async function refundRequestAllowance(
+  db: Firestore,
+  uid: string,
+  nowMs: number
+): Promise<void> {
+  const limitRef = db.collection(MEMBER_EMAIL_LIMITS).doc(uid);
+  await db.runTransaction(async (txn) => {
+    const snap = await txn.get(limitRef);
+    const windowStart = snap.get('windowStart') as Timestamp | undefined;
+    const count = (snap.get('count') as number | undefined) ?? 0;
+    if (
+      count > 0 &&
+      windowStart instanceof Timestamp &&
+      windowStart.toMillis() <= nowMs
+    ) {
+      txn.update(limitRef, { count: count - 1 });
+    }
+  });
+}
+
+/**
  * Edit-member's email change on one's own linked row. Returns:
  *  - unchanged: the address (case-insensitively) is the current one;
  *  - updated: it is the caller's verified sign-in address, written now;
  *  - pending: a confirmation link was mailed to it; nothing changes until
  *    the link is used. Each new request replaces the member's earlier link.
  * The caller must be verified (VERIFY_LOGIN_EMAIL) and an active member
- * (NOT_ACTIVE_MEMBER), both permission-denied.
+ * (NOT_ACTIVE_MEMBER), both permission-denied; a failed Auth lookup is
+ * unavailable (AUTH_LOOKUP_UNAVAILABLE).
  */
 export const requestMemberEmailChange = onCall<{
   groupId?: unknown;
@@ -249,7 +370,7 @@ export const requestMemberEmailChange = onCall<{
   callableAppCheck,
   async (request): Promise<{ status: MemberEmailChangeStatus }> => {
     const uid = requireUid(request.auth?.uid);
-    const verifiedLower = await requireVerifiedCaller(uid);
+    const { emailLower: verifiedLower } = await requireVerifiedCaller(uid);
     const { groupId, memberId, email } = request.data ?? {};
     if (!isSingleEmailAddress(email)) {
       throw new HttpsError(
@@ -296,9 +417,17 @@ export const requestMemberEmailChange = onCall<{
       return { status: 'updated' };
     }
 
-    // The allowance comes first, so every mailed or refused attempt
-    // (a duplicate address included) counts against it (M2).
+    // The recipient's cooldown is checked before the allowance, so a send
+    // it refuses doesn't use up the caller's requests. It is checked again
+    // in the transaction below, which also starts it, so two concurrent
+    // requests can't both mail the address; the one that loses that race
+    // was already charged, and gets the request back.
     const nowMs = Date.now();
+    const cooldownRef = recipientCooldownRef(db, emailLower);
+    assertNotCoolingDown(await cooldownRef.get(), nowMs);
+
+    // The allowance comes next, so every other mailed or refused attempt
+    // (a duplicate address included) counts against it (M2).
     await consumeRequestAllowance(db, uid, nowMs);
 
     const token = randomBytes(32).toString('base64url');
@@ -309,25 +438,47 @@ export const requestMemberEmailChange = onCall<{
     // One transaction, so two concurrent requests can't both leave a live
     // link behind (M1): the earlier tokens are read and deleted with the
     // new one's creation.
-    await db.runTransaction(async (txn) => {
-      await assertNoOtherMemberHas((q) => txn.get(q), memberRef, emailLower);
-      const earlier = await pendingTokensOf(txn, memberRef);
-      for (const ref of earlier) txn.delete(ref);
-      txn.set(tokenRef, {
-        uid,
-        memberRef,
-        email,
-        emailLower,
-        createdAt: Timestamp.fromMillis(nowMs),
-        expiresAt: Timestamp.fromMillis(nowMs + EMAIL_CHANGE_TOKEN_TTL_MS),
+    await db
+      .runTransaction(async (txn) => {
+        await assertNoOtherMemberHas((q) => txn.get(q), memberRef, emailLower);
+        assertNotCoolingDown(await txn.get(cooldownRef), nowMs);
+        const earlier = await pendingTokensOf(txn, memberRef);
+        for (const ref of earlier) txn.delete(ref);
+        txn.set(cooldownRef, {
+          sentAt: Timestamp.fromMillis(nowMs),
+          expiresAt: Timestamp.fromMillis(nowMs + RECIPIENT_COOLDOWN_MS),
+        });
+        txn.set(tokenRef, {
+          uid,
+          memberRef,
+          email,
+          emailLower,
+          createdAt: Timestamp.fromMillis(nowMs),
+          expiresAt: Timestamp.fromMillis(nowMs + EMAIL_CHANGE_TOKEN_TTL_MS),
+        });
+        txn.set(mailRef, {
+          to: email,
+          message: buildMemberEmailConfirmationEmail(
+            emailChangeConfirmLink(token)
+          ),
+        });
+      })
+      .catch(async (error: unknown) => {
+        // Only the re-check above throws this: another caller's mail to the
+        // address committed after our first read. A failed refund is
+        // logged, never thrown: the caller must still see the refusal.
+        if (isCooldownRefusal(error)) {
+          try {
+            await refundRequestAllowance(db, uid, nowMs);
+          } catch (refundError) {
+            console.error(
+              `Email change allowance refund failed for ${uid}:`,
+              refundError
+            );
+          }
+        }
+        throw error;
       });
-      txn.set(mailRef, {
-        to: email,
-        message: buildMemberEmailConfirmationEmail(
-          emailChangeConfirmLink(token)
-        ),
-      });
-    });
     return { status: 'pending' };
   }
 );
@@ -341,7 +492,9 @@ export const requestMemberEmailChange = onCall<{
  *  - permission-denied: VERIFY_LOGIN_EMAIL (the caller is not verified),
  *    CONFIRM_WRONG_ACCOUNT (another account asked for it),
  *    NOT_ACTIVE_MEMBER (the caller left the group);
- *  - already-exists: DUPLICATE_MEMBER_EMAIL (another member took it).
+ *  - already-exists: DUPLICATE_MEMBER_EMAIL (another member took it);
+ *  - unavailable: AUTH_LOOKUP_UNAVAILABLE (the Auth lookup failed; the
+ *    link is untouched, so a retry can use it).
  */
 export const confirmMemberEmailChange = onCall<{ token?: unknown }>(
   callableAppCheck,
@@ -387,23 +540,131 @@ export const confirmMemberEmailChange = onCall<{ token?: unknown }>(
 );
 
 /**
+ * Linked rows per updateMemberEmails transaction. Each row costs one update
+ * plus the deletes of its pending links (at most one in practice, since each
+ * request replaces the member's earlier link), so 100 rows stay far below a
+ * commit's 500-write limit. A user realistically has far fewer memberships,
+ * so this is one transaction in practice.
+ */
+export const MEMBER_EMAILS_PER_TXN = 100;
+
+/** The longest `onlyFromEmail` accepted (well past any real address). */
+const MAX_FROM_EMAIL_LENGTH = 1000;
+
+/**
+ * Account > Profile's Sync and the "Update your group emails?" dialog: moves
+ * every member doc linked to the caller (active or not, the app's former
+ * client query) to the caller's VERIFIED Auth address, never one the client
+ * supplies. Skips, comparing case-insensitively:
+ *  - rows already on that address;
+ *  - with `onlyFromEmail`, rows whose email is not that address;
+ *  - rows whose group already has another member on that address, counted
+ *    as `conflicts` (the callables' DUPLICATE_MEMBER_EMAIL check).
+ * Each updated row gets `email` and `emailLower`, and its pending
+ * confirmation links are deleted with it, so an older link can't put the
+ * row back (M1).
+ *
+ * Atomic: one transaction per MEMBER_EMAILS_PER_TXN rows, which is every row
+ * for any real user. Past that, a failure can leave earlier chunks written.
+ * That is acceptable because every row is still written whole (email,
+ * emailLower and its links together), and a retry skips the rows already on
+ * the address.
+ *
+ * Errors: unauthenticated; permission-denied VERIFY_LOGIN_EMAIL (no verified
+ * Auth address); unavailable AUTH_LOOKUP_UNAVAILABLE (the Auth lookup
+ * failed); invalid-argument (`onlyFromEmail` not a string);
+ * failed-precondition LOGIN_EMAIL_INVALID (the Auth address is not one valid
+ * address, which a member doc may not hold).
+ */
+export const updateMemberEmails = onCall<{ onlyFromEmail?: unknown }>(
+  callableAppCheck,
+  async (request): Promise<{ updated: number; conflicts: number }> => {
+    const uid = requireUid(request.auth?.uid);
+    const { email, emailLower } = await requireVerifiedCaller(uid);
+    const onlyFromEmail = request.data?.onlyFromEmail ?? null;
+    if (
+      onlyFromEmail !== null &&
+      (typeof onlyFromEmail !== 'string' ||
+        onlyFromEmail.length > MAX_FROM_EMAIL_LENGTH)
+    ) {
+      throw new HttpsError(
+        'invalid-argument',
+        'onlyFromEmail must be an email address'
+      );
+    }
+    if (!isSingleEmailAddress(email)) {
+      throw new HttpsError('failed-precondition', LOGIN_EMAIL_INVALID);
+    }
+    const fromLower =
+      onlyFromEmail === null ? null : normalizeEmail(onlyFromEmail);
+
+    const db = getFirestore();
+    const linked = await db
+      .collectionGroup('members')
+      .where('userRef', '==', db.collection('users').doc(uid))
+      .get();
+    const refs = linked.docs.map((d) => d.ref);
+
+    let updated = 0;
+    let conflicts = 0;
+    for (let i = 0; i < refs.length; i += MEMBER_EMAILS_PER_TXN) {
+      const chunk = refs.slice(i, i + MEMBER_EMAILS_PER_TXN);
+      const result = await db.runTransaction(async (txn) => {
+        const snaps = await txn.getAll(...chunk);
+        const writes: { ref: DocumentReference; links: DocumentReference[] }[] =
+          [];
+        // Groups this transaction gives the address to: a second row of the
+        // caller's in the same group would be a duplicate the query below
+        // can't see yet (the first write is not committed).
+        const claimed = new Set<string>();
+        let clashes = 0;
+        for (const snap of snaps) {
+          if (!snap.exists || !isLinkedTo(snap.data(), uid)) continue;
+          const stored: unknown = snap.get('email');
+          const current =
+            typeof stored === 'string' ? normalizeEmail(stored) : '';
+          if (current === emailLower) continue;
+          if (fromLower !== null && current !== fromLower) continue;
+          const group = snap.ref.parent.path;
+          if (
+            claimed.has(group) ||
+            (await otherMemberHas((q) => txn.get(q), snap.ref, emailLower))
+          ) {
+            clashes++;
+            continue;
+          }
+          claimed.add(group);
+          writes.push({
+            ref: snap.ref,
+            links: await pendingTokensOf(txn, snap.ref),
+          });
+        }
+        for (const { ref, links } of writes) {
+          for (const link of links) txn.delete(link);
+          txn.update(ref, { email, emailLower });
+        }
+        return { updated: writes.length, conflicts: clashes };
+      });
+      updated += result.updated;
+      conflicts += result.conflicts;
+    }
+    return { updated, conflicts };
+  }
+);
+
+/**
  * Nightly cleanup (index.ts deleteOldPaidExpenses): deletes expired
- * confirmation tokens and rate-limit docs whose window has ended. Returns
- * how many of each it deleted.
+ * confirmation tokens, rate-limit docs whose window has ended and ended
+ * recipient cooldowns. Returns how many of each it deleted.
  */
 export async function deleteExpiredMemberEmailChanges(
   nowMs: number = Date.now()
-): Promise<{ tokens: number; limits: number }> {
+): Promise<{ tokens: number; limits: number; cooldowns: number }> {
   const db = getFirestore();
-  const deleteAll = async (query: Query): Promise<number> => {
-    const snap = await query.get();
-    for (let i = 0; i < snap.docs.length; i += 400) {
-      const batch = db.batch();
-      for (const doc of snap.docs.slice(i, i + 400)) batch.delete(doc.ref);
-      await batch.commit();
-    }
-    return snap.size;
-  };
+  // Skips a doc written after the query read it, e.g. a limit window a
+  // request just restarted.
+  const deleteAll = async (query: Query): Promise<number> =>
+    deleteDocsIfUnchanged((await query.get()).docs);
   const tokens = await deleteAll(
     db
       .collection(MEMBER_EMAIL_TOKENS)
@@ -418,5 +679,10 @@ export async function deleteExpiredMemberEmailChanges(
         Timestamp.fromMillis(nowMs - EMAIL_CHANGE_WINDOW_MS)
       )
   );
-  return { tokens, limits };
+  const cooldowns = await deleteAll(
+    db
+      .collection(MEMBER_EMAIL_RECIPIENT_COOLDOWNS)
+      .where('expiresAt', '<=', Timestamp.fromMillis(nowMs))
+  );
+  return { tokens, limits, cooldowns };
 }

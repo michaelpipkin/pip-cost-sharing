@@ -14,14 +14,20 @@ import {
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
 import { LoadingService } from '@components/loading/loading.service';
-import { AnalyticsService } from '@services/analytics.service';
+import { AppCheckErrorHandlerService } from '@services/app-check-error-handler.service';
 import {
-  MemberEmailUpdateError,
+  memberEmailUpdateMessage,
   MemberService,
 } from '@services/member.service';
 import { UserStore } from '@store/user.store';
-import { verifiedTokenEmail } from '@utils/verified-token-email.util';
-import { getAuth } from 'firebase/auth';
+import {
+  AUTH_LOOKUP_UNAVAILABLE,
+  isAuthLookupUnavailable,
+  isInvalidLoginEmailRefusal,
+  isUnverifiedLoginRefusal,
+  LOGIN_EMAIL_INVALID_MESSAGE,
+  VERIFY_LOGIN_EMAIL,
+} from '@utils/callable-error.util';
 
 export interface GroupEmailUpdateDialogData {
   oldEmail: string;
@@ -49,13 +55,13 @@ export interface GroupEmailUpdateDialogData {
 })
 export class GroupEmailUpdateDialogComponent {
   protected readonly data = inject<GroupEmailUpdateDialogData>(MAT_DIALOG_DATA);
-  protected readonly dialogRef = inject<MatDialogRef<GroupEmailUpdateDialogComponent>>(MatDialogRef);
-  protected readonly auth = inject(getAuth);
+  protected readonly dialogRef =
+    inject<MatDialogRef<GroupEmailUpdateDialogComponent>>(MatDialogRef);
   protected readonly memberService = inject(MemberService);
   protected readonly userStore = inject(UserStore);
   protected readonly loading = inject(LoadingService);
   protected readonly snackbar = inject(MatSnackBar);
-  protected readonly analytics = inject(AnalyticsService);
+  protected readonly appCheckErrorHandler = inject(AppCheckErrorHandlerService);
 
   /** Memberships on an address the user set for that group. */
   protected readonly other =
@@ -105,46 +111,37 @@ export class GroupEmailUpdateDialogComponent {
     this.loading.loadingOn();
     let finished = true;
     try {
-      const userRef = this.userStore.user()?.ref;
       // The session ended: there is nobody to update (the dialog closes).
-      if (!userRef) return;
-      // The rules accept a linked member email only when it is the caller's
-      // verified token address, so take it from a refreshed token, exactly
-      // as Account > Profile's Sync does.
-      const tokenEmail = await verifiedTokenEmail(this.auth);
-      if (!tokenEmail) {
-        this.#notify('Verify your login email first.');
-        return;
-      }
-      const count = onlyOld
-        ? await this.memberService.updateAllMemberEmails(
-            userRef,
-            tokenEmail,
-            this.data.oldEmail
-          )
-        : await this.memberService.updateAllMemberEmails(userRef, tokenEmail);
-      this.#notify(
-        count > 0
-          ? `Updated email on ${count} member ${count === 1 ? 'record' : 'records'}`
-          : 'No member records needed updating'
+      if (!this.userStore.user()) return;
+      // The server moves the memberships to the account's verified login
+      // email (updateMemberEmails), all of them or only those on the old one.
+      const result = await this.memberService.updateAllMemberEmails(
+        onlyOld ? this.data.oldEmail : undefined
       );
+      this.#notify(memberEmailUpdateMessage(result));
     } catch (error) {
-      finished = false;
-      this.analytics.logError(
-        'Group Email Update Dialog',
-        onlyOld ? 'update_old_email_only' : 'update_all',
-        'Failed to update member emails',
-        error instanceof Error ? error.message : 'Unknown error'
-      );
-      this.#notify(
-        error instanceof MemberEmailUpdateError
-          ? `Updated email on ${error.updated} member ${error.updated === 1 ? 'record' : 'records'} before an error. Please try again.`
-          : 'Something went wrong - could not update member emails'
-      );
+      // Retrying can't help with these two, so the dialog closes.
+      if (isUnverifiedLoginRefusal(error)) {
+        this.#notify(VERIFY_LOGIN_EMAIL);
+      } else if (isInvalidLoginEmailRefusal(error)) {
+        this.#notify(LOGIN_EMAIL_INVALID_MESSAGE);
+      } else if (isAuthLookupUnavailable(error)) {
+        // An Auth outage on the server: the same choice can be retried.
+        finished = false;
+        this.#notify(AUTH_LOOKUP_UNAVAILABLE);
+      } else {
+        // MemberService logs unexpected failures. An App Check refusal (the
+        // callable enforces it) gets the help dialog over this one.
+        finished = false;
+        this.appCheckErrorHandler.handle(
+          error,
+          'Something went wrong - could not update member emails'
+        );
+      }
     } finally {
       this.loading.loadingOff();
-      // A failure leaves the dialog open so the same choice can be retried
-      // (records already written are skipped the second time).
+      // A failure writes nothing and leaves the dialog open, so the same
+      // choice can be retried.
       if (finished) this.dialogRef.close();
     }
   }

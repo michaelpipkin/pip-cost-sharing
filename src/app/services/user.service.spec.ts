@@ -548,6 +548,21 @@ describe('UserService', () => {
     const owenRef = { id: 'm-owen' } as any;
     const ivoRef = { id: 'm-ivo' } as any;
 
+    /** The server's daily group-mail refusal (functions/src/mail-allowance.ts). */
+    const limitRefusal = () =>
+      Object.assign(
+        new Error(
+          "This would go over today's limit for group emails. Try again tomorrow. [429]"
+        ),
+        { code: 'functions/resource-exhausted' }
+      );
+    const transfersOf = (count: number) =>
+      Array.from({ length: count }, (_, i) => ({
+        owedByMemberRef: { id: `m-${i}` } as any,
+        owedToMemberRef: owenRef,
+        amount: i + 1,
+      }));
+
     function mockCallable(data: unknown) {
       const callable = vi.fn().mockResolvedValue({ data });
       const httpsCallableSpy = vi
@@ -612,7 +627,7 @@ describe('UserService', () => {
           { owedByMemberRef: ivoRef, owedToMemberRef: patRef, amount: 4 },
         ]);
 
-        expect(result).toEqual({ sent: 2, skipped: 2 });
+        expect(result).toEqual({ sent: 2, skipped: 2, limitReached: false });
         expect(httpsCallableSpy).toHaveBeenCalledWith(
           mockFunctions,
           'sendPaymentRequests'
@@ -648,7 +663,7 @@ describe('UserService', () => {
           transfers
         );
 
-        expect(result).toEqual({ sent: 27, skipped: 1 });
+        expect(result).toEqual({ sent: 27, skipped: 1, limitReached: false });
         expect(callable).toHaveBeenCalledTimes(2);
         const sentIds = callable.mock.calls.map(([data]: any[]) =>
           data.requests.map((r: any) => r.owedByMemberId)
@@ -662,8 +677,64 @@ describe('UserService', () => {
 
         await expect(
           service.sendGroupPaymentRequestEmails(groupId, [])
-        ).resolves.toEqual({ sent: 0, skipped: 0 });
+        ).resolves.toEqual({ sent: 0, skipped: 0, limitReached: false });
         expect(httpsCallableSpy).not.toHaveBeenCalled();
+      });
+
+      // The batches go out one after another, so what was sent
+      // before a daily-limit refusal is a known prefix the app can report.
+      it('sends the batches one after another, not at once', async () => {
+        const { callable } = mockCallable(undefined);
+        let finishFirst!: (value: unknown) => void;
+        callable
+          .mockReturnValueOnce(new Promise((resolve) => (finishFirst = resolve)))
+          .mockResolvedValueOnce({ data: { results: ['sent'] } });
+
+        const pending = service.sendGroupPaymentRequestEmails(
+          groupId,
+          transfersOf(26)
+        );
+        await Promise.resolve();
+        expect(callable).toHaveBeenCalledTimes(1);
+
+        finishFirst({ data: { results: Array(25).fill('sent') } });
+        await expect(pending).resolves.toEqual({
+          sent: 26,
+          skipped: 0,
+          limitReached: false,
+        });
+        expect(callable).toHaveBeenCalledTimes(2);
+      });
+
+      it('reports what was sent when a later batch reaches the daily limit', async () => {
+        const { callable } = mockCallable(undefined);
+        callable
+          .mockResolvedValueOnce({
+            data: { results: [...Array(24).fill('sent'), 'opted_out'] },
+          })
+          .mockRejectedValueOnce(limitRefusal())
+          .mockResolvedValueOnce({ data: { results: ['sent'] } });
+
+        await expect(
+          service.sendGroupPaymentRequestEmails(groupId, transfersOf(60))
+        ).resolves.toEqual({ sent: 24, skipped: 1, limitReached: true });
+        // Nothing after the refused batch is tried.
+        expect(callable).toHaveBeenCalledTimes(2);
+      });
+
+      it('rejects when the first batch is refused, or a later one fails otherwise', async () => {
+        const { callable } = mockCallable(undefined);
+        callable.mockRejectedValueOnce(limitRefusal());
+        await expect(
+          service.sendGroupPaymentRequestEmails(groupId, transfersOf(30))
+        ).rejects.toMatchObject({ code: 'functions/resource-exhausted' });
+
+        callable
+          .mockResolvedValueOnce({ data: { results: Array(25).fill('sent') } })
+          .mockRejectedValueOnce(new Error('internal'));
+        await expect(
+          service.sendGroupPaymentRequestEmails(groupId, transfersOf(30))
+        ).rejects.toThrow('internal');
       });
     });
 
@@ -714,15 +785,13 @@ describe('UserService', () => {
         });
       });
 
-      it('splits more than 25 members into calls of at most 25 (the server cap)', async () => {
+      it('splits more than 25 members into calls of at most 25 (the server cap), adding up what was sent', async () => {
         const { callable } = mockCallable({ sent: 1 });
         const refs = Array.from({ length: 30 }, (_, i) => ({ id: `m-${i}` }) as any);
 
-        await service.sendGroupSettleUnpayEmails(
-          groupId,
-          refs,
-          new Date(2026, 0, 5)
-        );
+        await expect(
+          service.sendGroupSettleUnpayEmails(groupId, refs, new Date(2026, 0, 5))
+        ).resolves.toEqual({ sent: 2, limitReached: false });
 
         expect(callable).toHaveBeenCalledTimes(2);
         expect(callable).toHaveBeenNthCalledWith(1, {
@@ -740,9 +809,46 @@ describe('UserService', () => {
       it('makes no call when there is no one to notify', async () => {
         const { httpsCallableSpy } = mockCallable({ sent: 0 });
 
-        await service.sendGroupSettleUnpayEmails(groupId, [], new Date());
+        await expect(
+          service.sendGroupSettleUnpayEmails(groupId, [], new Date())
+        ).resolves.toEqual({ sent: 0, limitReached: false });
 
         expect(httpsCallableSpy).not.toHaveBeenCalled();
+      });
+
+      // One batch after another, reporting a known prefix.
+      it('reports what was sent when a later batch reaches the daily limit', async () => {
+        const { callable } = mockCallable(undefined);
+        let finishFirst!: (value: unknown) => void;
+        callable
+          .mockReturnValueOnce(new Promise((resolve) => (finishFirst = resolve)))
+          .mockRejectedValueOnce(limitRefusal());
+        const refs = Array.from({ length: 60 }, (_, i) => ({ id: `m-${i}` }) as any);
+
+        const pending = service.sendGroupSettleUnpayEmails(
+          groupId,
+          refs,
+          new Date(2026, 0, 5)
+        );
+        await Promise.resolve();
+        expect(callable).toHaveBeenCalledTimes(1);
+        finishFirst({ data: { sent: 20 } });
+
+        await expect(pending).resolves.toEqual({ sent: 20, limitReached: true });
+        expect(callable).toHaveBeenCalledTimes(2);
+      });
+
+      it('rejects when the first batch is refused', async () => {
+        const { callable } = mockCallable(undefined);
+        callable.mockRejectedValueOnce(limitRefusal());
+
+        await expect(
+          service.sendGroupSettleUnpayEmails(
+            groupId,
+            [ivoRef, owenRef],
+            new Date(2026, 0, 5)
+          )
+        ).rejects.toMatchObject({ code: 'functions/resource-exhausted' });
       });
     });
   });
@@ -924,7 +1030,7 @@ describe('UserService', () => {
       providerData: [{ providerId: 'password' }],
     };
 
-    it('clears the loading overlay and explains an App Check rejection specifically', async () => {
+    it('clears the loading overlay with the retry message, not the App Check dialog, for a Firestore permission-denied (Firestore is not App Check enforced)', async () => {
       vi.spyOn(firestoreModule, 'getDoc').mockRejectedValueOnce(
         new FirebaseError('permission-denied', 'Missing or insufficient permissions.')
       );
@@ -934,11 +1040,18 @@ describe('UserService', () => {
 
       expect(mockLoadingService.loadingOff).toHaveBeenCalled();
       expect(mockGroupService.getUserGroups).not.toHaveBeenCalled();
-      expect(mockDialog.open).toHaveBeenCalledWith(
+      expect(mockDialog.open).not.toHaveBeenCalledWith(
         AppCheckErrorDialogComponent,
-        { disableClose: false, maxWidth: '80vw' }
+        expect.anything()
       );
-      expect(mockSnackBar.openFromComponent).not.toHaveBeenCalled();
+      expect(mockSnackBar.openFromComponent).toHaveBeenCalledWith(
+        expect.anything(),
+        {
+          data: {
+            message: 'Something went wrong loading your account. Please try again.',
+          },
+        }
+      );
     });
 
     it('clears the loading overlay with a generic message for other failures', async () => {

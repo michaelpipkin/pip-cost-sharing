@@ -5,6 +5,8 @@ import moment from 'moment';
 // Month and day, optionally followed by a year, separated by "/", "-" or ".".
 // A trailing separator with no year ("3/17/") means no year.
 const NUMERIC_DATE = /^(\d{1,2})([/.-])(\d{1,2})(?:\2(\d*))?$/;
+// An ISO date with no time (yyyy-MM-dd, one-digit month or day allowed).
+const ISO_DATE = /^(\d{4})-(\d{1,2})-(\d{1,2})$/;
 
 @Injectable({
   providedIn: 'root',
@@ -12,13 +14,20 @@ const NUMERIC_DATE = /^(\d{1,2})([/.-])(\d{1,2})(?:\2(\d*))?$/;
 export class CustomDateAdapter extends NativeDateAdapter {
   override parse(value: any): Date | null {
     if (typeof value === 'string' && value.length > 0) {
-      const match = NUMERIC_DATE.exec(value.trim());
+      const text = value.trim();
+      const match = NUMERIC_DATE.exec(text);
       if (match) {
         return this.#parseNumericDate(
           +match[1]!,
           +match[3]!,
           match[4] || undefined
         );
+      }
+      // Date.parse reads a date-only ISO string as UTC midnight, the day
+      // before anywhere west of UTC, so it is built as a local date here.
+      const iso = ISO_DATE.exec(text);
+      if (iso) {
+        return this.#localDate(+iso[1]!, +iso[2]!, +iso[3]!);
       }
     }
     return super.parse(value);
@@ -33,16 +42,25 @@ export class CustomDateAdapter extends NativeDateAdapter {
    * parse error) rather than rolling over into the next month.
    */
   #parseNumericDate(month: number, day: number, year?: string): Date {
-    let parsed: moment.Moment;
     if (year === undefined) {
-      parsed = moment({ year: moment().year(), month: month - 1, date: day });
-    } else if (year.length === 2) {
-      parsed = moment(`${month}/${day}/${year}`, 'M/D/YY', true);
-    } else if (year.length === 4) {
-      parsed = moment({ year: +year, month: month - 1, date: day });
-    } else {
-      return new Date(Number.NaN);
+      return this.#localDate(moment().year(), month, day);
     }
+    if (year.length === 4) {
+      return this.#localDate(+year, month, day);
+    }
+    if (year.length === 2) {
+      const parsed = moment(`${month}/${day}/${year}`, 'M/D/YY', true);
+      return parsed.isValid() ? parsed.toDate() : new Date(Number.NaN);
+    }
+    return new Date(Number.NaN);
+  }
+
+  /**
+   * Local midnight of that day (month 1-12), or an invalid Date for an
+   * impossible one such as 2025-02-30, rather than a roll-over.
+   */
+  #localDate(year: number, month: number, day: number): Date {
+    const parsed = moment({ year, month: month - 1, date: day });
     return parsed.isValid() ? parsed.toDate() : new Date(Number.NaN);
   }
 }

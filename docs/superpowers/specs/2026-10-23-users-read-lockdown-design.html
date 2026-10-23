@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Users Read Lockdown — Design</title>
+<style>
+  :root { --fg:#1d1f23; --muted:#5b6170; --bg:#fff; --line:#dde1e8; --accent:#2f5fb3; --note:#f4f6fa; }
+  @media (prefers-color-scheme: dark) { :root { --fg:#e6e8ec; --muted:#a0a6b3; --bg:#16181c; --line:#2c3038; --accent:#7fa6ee; --note:#1f2228; } }
+  body { font: 16px/1.6 system-ui, sans-serif; color:var(--fg); background:var(--bg); max-width: 860px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 1.8rem; margin-bottom: .2rem; }
+  h2 { margin-top: 2.2rem; border-bottom: 1px solid var(--line); padding-bottom: .3rem; }
+  h3 { margin-top: 1.5rem; }
+  .meta { color: var(--muted); margin-top: 0; }
+  code { font-size: .92em; background: var(--note); padding: 1px 4px; border-radius: 3px; }
+  pre { background: var(--note); padding: 10px 14px; overflow-x: auto; font-size: .86em; line-height: 1.45; border-radius: 4px; }
+  pre code { background: none; padding: 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+  th, td { border: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { background: var(--note); }
+  .tablewrap { overflow-x: auto; }
+  .call { color: var(--accent); font-weight: 600; font-size: .85em; }
+  .box { background: var(--note); border-left: 3px solid var(--accent); padding: 8px 14px; margin: 1rem 0; }
+  li { margin: .25rem 0; }
+</style>
+</head>
+<body>
+
+<h1>Users Read Lockdown — Design</h1>
+<p class="meta">pip-cost-sharing · 2026-10-23 · Status: draft for owner approval · Phase 3 (read half) of <code>.claude/firestore-rules-hardening.md</code>, merged with "link members by any verified address" (<code>docs/superpowers/plans/2026-10-19-infra-followups.html</code>, Owner section)</p>
+
+<p>Tags: <span class="call">[my call]</span> marks a choice made while drafting that the owner has not confirmed. The callable gatekeeper and the <code>verifiedEmails/{address}</code> index (server-only, one owner per address, most recent confirmation wins) are the owner's agreed designs and are not reopened here. Section 11 lists the questions.</p>
+
+<h2>1. Intent</h2>
+<p><code>firestore.rules</code> still has <code>allow read: if isSignedIn()</code> on <code>users/{userId}</code>. Any signed-in account (sign-up is open) can read every profile's <code>email</code>, <code>venmoId</code>, <code>paypalId</code>, <code>cashAppId</code>, <code>zelleId</code> and <code>emailOptOut</code>, either one doc at a time or with a <code>users</code> list query. The write half of Phase 3 (B13, B14) is done. This design closes the read half.</p>
+<p>Two client paths rely on querying <code>users</code> by email to auto-link invited members, so the lockdown and the owner's "link by any verified address" feature have to change the same code. Both move linking to the server and use the private index, so they ship as one plan.</p>
+
+<h2>2. Goals and non-goals</h2>
+<h3>Goals</h3>
+<ol>
+  <li>A client can read only its own <code>users/{uid}</code> doc (plus the admin uid). Client queries on <code>users</code> are denied.</li>
+  <li>Payment handles reach a payer only through a callable that checks the caller is an active member of the payee's group. It returns the four handles and nothing else.</li>
+  <li>Auto-linking runs on the server through <code>verifiedEmails/{address}</code>. An invited member links to the account that has proven the address: its login email or a confirmed group email.</li>
+  <li>No client writes another user's doc. The cross-user <code>defaultGroupRef</code> clears move to triggers, and the B13 exception rule is removed.</li>
+  <li>An app tab that was open before the change keeps working until the rules flip, and a reload fixes it after the flip.</li>
+</ol>
+<h3>Non-goals</h3>
+<ul>
+  <li>A UI that lists or removes a user's verified addresses (follow-up).</li>
+  <li>Letting <code>requestMemberEmailChange</code> apply any indexed address without a confirmation mail. The index makes this easy, but it is a follow-up.</li>
+  <li>Per-caller limits on group mail, and removing the emulator admin uid from the production rules. Both are separate Owner items.</li>
+  <li>A consent step before an admin's auto-link (see Q2).</li>
+</ul>
+
+<h2>3. Inventory: client reads of other users' docs</h2>
+<p>Grepped <code>src/app</code> (non-spec) for <code>collection(…'users')</code>, <code>doc(…users/…)</code>, <code>getDoc</code>/<code>getDocs</code>/<code>onSnapshot</code> on user refs, <code>emailLower</code> and every <code>userRef</code> use. The admin pages read nothing from <code>users</code> on the client: reports, repair and backfill are callables. Group mail is already built on the server (B1). <strong>Five client read sites, plus one read made by the rules.</strong></p>
+<div class="tablewrap">
+<table>
+<tr><th>#</th><th>Site</th><th>Reads</th><th>Why</th><th>Reader</th><th>Becomes</th></tr>
+<tr><td>1</td><td><code>user.service</code> <code>getPaymentMethods</code> (from <code>summary.component</code> <code>payExpenses</code>)</td><td><code>getDoc(member.userRef)</code>: the whole users doc; 4 handles used</td><td>Fill the Payment dialog</td><td>Any active member recording a payment</td><td><strong>Callable</strong> <code>getMemberPaymentMethods</code> (§5.1). The method keeps its signature, and its return type changes from <code>object</code> to <code>PaymentMethods</code>.</td></tr>
+<tr><td>2</td><td><code>member.service</code> <code>addMemberToGroup</code></td><td><code>users where emailLower == X</code>: a list query that returns whole docs, handles included</td><td>Auto-link a new member to an account</td><td>Group admin</td><td><strong>Dropped.</strong> The member is created unlinked and the <code>syncMemberEmailLower</code> trigger links it through the index (§6.3). The client's ambiguous-match branch goes too, because the index has one owner per address.</td></tr>
+<tr><td>3</td><td><code>member.service</code> <code>updateMemberWithUserMatching</code> (edit-member, another person's unlinked row)</td><td>Same query</td><td>Link when an unlinked row's email changes</td><td>Group admin</td><td><strong>Dropped.</strong> The trigger links on an email change. The method is folded into <code>updateMember</code>, which also fixes a bug: this path skips <code>updateMember</code>'s duplicate-email check, so an admin can give an unlinked row an address that another row in the group already uses.</td></tr>
+<tr><td>4</td><td><code>member.service</code> <code>removeMemberFromGroup</code></td><td><code>getDoc(removedUserRef).defaultGroupRef</code></td><td>Clear the removed user's default if it is this group</td><td>Group admin</td><td><strong>Dropped</strong> (the read and the cross-user write). <code>syncGroupMemberUids</code> clears the default for any uid that drops out of <code>memberUids</code> (§6.4).</td></tr>
+<tr><td>5</td><td><code>group.service</code> <code>updateGroup</code> (deactivate or archive)</td><td><code>users where defaultGroupRef == group</code></td><td>Clear everyone's default that points at the group</td><td>Group admin</td><td><strong>Dropped.</strong> A new <code>clearDefaultsOnGroupDeactivate</code> trigger reuses the existing <code>clearDefaultGroupRefs</code> (§6.4).</td></tr>
+<tr><td>6</td><td><code>firestore.rules</code> members <code>emailMatchesLinkedUser</code> (rules <code>get()</code>)</td><td><code>get(userRef).data.email</code></td><td>B19: a member linked by an admin must carry the linked user's profile email</td><td>The rules engine, on an admin's member create or link</td><td><strong>Narrowed to the caller's own row</strong> (§4). An admin can no longer link someone else, so the check is needed only for the <code>addGroup</code> creator row.</td></tr>
+</table>
+</div>
+<p><strong>Stay as they are</strong> (own doc only): <code>getUserDetails</code> (both callers pass the session's own uid), <code>waitForServerCreatedUser</code> (<code>onSnapshot</code> on the own doc, before it exists), <code>#storedProfileEmail</code> and <code>createUserIfNotExists</code>.</p>
+<p><strong>Server code on the <code>users.emailLower</code> model</strong> (Admin SDK, so the rules don't block it, but it moves to the index): <code>linkInvitedMembersInternal</code>; <code>buildOrphanedMembersReport</code> and <code>repairOrphanedMembersInternal</code> in <code>admin-reports.ts</code>; <code>scripts/db/queries/link-orphaned-members.ts</code>. <code>group-mail-recipient.ts</code> reads the users doc on the server and stays as it is.</p>
+<p><strong>Tests that read across users from the client:</strong> <code>e2e/infra/user-rules.spec.ts</code> (its <code>users where defaultGroupRef</code> query, line 94, and the cross-user clear tests).</p>
+
+<h2>4. Proposed rules (release B)</h2>
+<pre><code>// Server-only (Admin SDK). get() from other rules is not needed: no rule reads these.
+match /verifiedEmails/{id}        { allow read, write: if false; }
+match /paymentLookupLimits/{uid}  { allow read, write: if false; }
+
+match /users/{userId} {
+  function isOwnUserDoc() { return isSignedIn() &amp;&amp; request.auth.uid == userId; }
+  // No resource.data in the read rule: waitForServerCreatedUser listens to the
+  // caller's own doc before it exists, and that get must pass.
+  allow get:    if isOwnUserDoc() || isAdminUser();
+  allow list:   if false;                 // no client queries users any more
+  allow create: if isOwnUserDoc() &amp;&amp; emailCreateValid() &amp;&amp; userEmailCreateOwned();
+  allow update: if isOwnUserDoc() &amp;&amp; emailUpdateValid() &amp;&amp; userEmailUpdateOwned();
+  allow delete: if isOwnUserDoc();
+}</code></pre>
+<ul>
+  <li><code>isAdminClearingDefaultGroup()</code> is deleted. No client writes another user's doc after release A.</li>
+  <li>Changes to the members rules. A client can no longer link anyone but itself, because it cannot read the index to learn a uid:
+    <ul>
+      <li><code>memberLinkCreateValid()</code> becomes <code>userRef == null || (own row &amp;&amp; (email == '' || isOwnVerifiedEmail(email) || emailMatchesLinkedUser(after)))</code>. Keeping <code>emailMatchesLinkedUser</code> for the own row covers a creator whose stored profile email lags the token, so <code>addGroup</code> does not regress. <span class="call">[my call]</span></li>
+      <li><code>memberLinkUpdateValid()</code>: <code>userRef</code> may change only from X to null, by an admin. The null-to-X path is removed. On an unlinked row an admin may still change <code>email</code> (with <code>userRef</code> staying null). The linked-row self-change is unchanged.</li>
+      <li><code>isUserDocRef()</code> stays, because the own-row <code>emailMatchesLinkedUser</code> still uses it.</li>
+    </ul>
+  </li>
+  <li>Release A adds only the two deny-all blocks, which document collections that are already denied by default. Every other rule stays as it is until release B.</li>
+</ul>
+
+<h2>5. Callables</h2>
+<h3>5.1 <code>getMemberPaymentMethods</code> (new, <code>functions/src/payment-methods.ts</code>)</h3>
+<div class="tablewrap">
+<table>
+<tr><th>Signature</th><td><code>onCall&lt;{ groupId?: unknown; memberId?: unknown }&gt;(callableAppCheck, …) → { venmoId: string; paypalId: string; cashAppId: string; zelleId: string }</code></td></tr>
+<tr><th>Auth checks, in order</th><td>
+  <ol>
+    <li>Signed in (<code>unauthenticated</code>).</li>
+    <li>Both ids pass <code>isDocId</code> (<code>invalid-argument</code>).</li>
+    <li>The caller's email is verified, by token claim or the Auth record as in <code>verifiedCallerEmail</code> (<code>permission-denied</code>).</li>
+    <li>The group exists and <code>request.auth.uid</code> is in its <code>activeMemberUids</code>. Otherwise <code>permission-denied</code> with <code>NOT_ACTIVE_MEMBER</code>, the same message as <code>group-emails.ts</code>.</li>
+    <li><code>groups/{groupId}/members/{memberId}</code> exists (<code>not-found</code>). The member may be inactive, since an inactive member can still be owed.</li>
+    <li>The rate limit is consumed after the checks, so refused calls don't count.</li>
+  </ol></td></tr>
+<tr><th>Returns</th><td>The four handles from <code>users/{uid}</code>, each <code>''</code> when missing. All four are <code>''</code> when the member is unlinked or the users doc is gone. Never email, <code>emailOptOut</code> or the uid.</td></tr>
+<tr><th>Rate limit</th><td>100 lookups per uid per 24 h window. It uses <code>consumeRequestAllowance</code>'s transaction pattern on <code>paymentLookupLimits/{uid}</code> and refuses with <code>resource-exhausted</code>. Generalize that helper to take the collection and limit rather than copying it. The nightly <code>deleteOldPaidExpenses</code> deletes expired windows, as it does for <code>memberEmailChangeLimits</code>. <span class="call">[my call: 100/day]</span></td></tr>
+<tr><th>Client</th><td><code>getPaymentMethods(memberRef)</code> calls it with <code>memberRef.parent.parent!.id</code> and <code>memberRef.id</code>. The summary's existing loading overlay and its "Could not load payment methods" snackbar cover a cold start and any failure.</td></tr>
+</table>
+</div>
+
+<h3>5.2 <code>linkInvitedMembers</code> (changed)</h3>
+<p>The signature and the auth checks don't change. The caller is signed in and has a verified address (<code>verifiedCallerEmail</code>), otherwise <code>failed-precondition</code>. New behaviour:</p>
+<ol>
+  <li>Upsert <code>verifiedEmails/{caller's login address}</code> for the caller. The client calls this after sign-up verification, after a <code>verifyBeforeUpdateEmail</code> change and on every Groups page load, so these calls are how the index learns login addresses.</li>
+  <li>Link pending members for <em>every</em> address the uid owns in the index: <code>collectionGroup('members') where emailLower in [...] and userRef == null</code>, in chunks of 30 addresses. The <code>email</code>-equals-address re-check stays. Each group links at most one row (guard in §6.3).</li>
+</ol>
+<p>It stays unthrottled, as today: it can only link the caller, to addresses the caller has proven.</p>
+
+<h3>5.3 Other callables touched</h3>
+<ul>
+  <li><code>confirmMemberEmailChange</code>: inside the existing transaction, also upserts <code>verifiedEmails/{confirmed address}</code> for the caller. After the commit it runs the linking routine for the caller, best-effort, so pending invites to that address link at once.</li>
+  <li><code>deleteUserAccount</code>: deletes <code>verifiedEmails where uid == uid</code> before the users doc goes.</li>
+  <li><code>runAdminReport</code> (orphaned-members) and <code>repairOrphanedMembers</code>: match through the index instead of <code>users.emailLower</code>. The "matched user count" becomes 0 or 1.</li>
+</ul>
+
+<h2>6. The verified-address index</h2>
+<h3>6.1 Shape</h3>
+<p><code>verifiedEmails/{id}</code> = <code>{ uid, email, verifiedAt: Timestamp, source: 'login' | 'group-confirm' | 'backfill' }</code>. The id is the lowercased address with <code>%</code> encoded as <code>%25</code> and <code>/</code> as <code>%2F</code>. <code>SINGLE_EMAIL_PATTERN</code> allows <code>/</code> in the local part, and a doc id cannot contain it. All index code goes in one module (<code>functions/src/verified-emails.ts</code>): <code>verifiedEmailId</code>, <code>upsertVerifiedEmail</code>, <code>ownerOf</code>, <code>addressesOf</code>, <code>removeAllFor</code>. <span class="call">[my call: escaped address, not a hash, so it stays readable in the console]</span></p>
+<p><strong>Upsert = takeover:</strong> set <code>{uid, verifiedAt: now, …}</code> unconditionally, so the most recent confirmation wins (owner rule). The backfill is the exception: it only creates and never takes over.</p>
+
+<h3>6.2 Writes</h3>
+<div class="tablewrap">
+<table>
+<tr><th>Event</th><th>Writer</th><th>Entry</th></tr>
+<tr><td>Google (already verified) sign-up</td><td><code>createUserProfileOnSignUp</code>, when <code>user.emailVerified</code></td><td>login</td></tr>
+<tr><td>Email/password verification; a verified login-email change; every Groups page load (self-heal)</td><td><code>linkInvitedMembers</code></td><td>login</td></tr>
+<tr><td>Group email confirmed through the mailed link</td><td><code>confirmMemberEmailChange</code></td><td>group-confirm</td></tr>
+<tr><td>Existing data</td><td><code>backfill-verified-emails</code> script (§7.3)</td><td>backfill</td></tr>
+<tr><td>Account deletion</td><td><code>deleteUserAccount</code></td><td>removes all of the uid's entries</td></tr>
+</table>
+</div>
+<p>A login-email change does not remove the old address. The user did prove it, and a takeover handles a recycled address (Q5). The index takes addresses only from Auth-verified sources, never from <code>users.email</code>, so legacy unverified profile values cannot reach it.</p>
+
+<h3>6.3 Linking moves to the server</h3>
+<p><code>syncMemberEmailLower</code> (the existing member-write trigger) also links. Keep the export name: a renamed function is a delete, and CI's <code>firebase deploy --only functions --non-interactive</code> stops at a deletion prompt.</p>
+<ul>
+  <li><strong>When it links:</strong> the doc was created, or its <code>email</code> changed, and <code>userRef</code> is null and <code>email</code> is non-empty. An admin's unlink (X to null, same email) and account deletion's anonymize never re-link.</li>
+  <li><strong>What it does:</strong> looks up <code>ownerOf(emailLower)</code>. If the doc's <code>email</code> still equals the address, it writes <code>userRef</code> (and <code>emailLower</code>) in one update. The trigger runs again and finds nothing to do.</li>
+  <li><strong>One row per account per group:</strong> skip, and log, when the uid is already in the group's <code>memberUids</code>. With several addresses an admin could add one person twice, and <code>getMemberByUserRef</code> assumes one row. <code>linkInvitedMembers</code> applies the same guard.</li>
+  <li><strong>The client side</strong> (release A): <code>addMemberToGroup</code> keeps the in-group duplicate check and creates the member with <code>userRef: null</code>. The members listener shows the registered state when the link lands, about 1-2 s later. A Send Invite click in that window gets <code>already-registered</code> from <code>sendGroupInvite</code>.</li>
+</ul>
+<p>The member email invariant (B19: a linked member's email is an address the linked user proved) holds by construction, because the index holds only proven addresses.</p>
+
+<h3>6.4 Default-group clears move to the server</h3>
+<ul>
+  <li><code>syncGroupMemberUidsInternal</code> already has the before and after <code>memberUids</code>. For each uid that left the list, it sets <code>defaultGroupRef</code> to null if it points at this group. This covers the removal path (#4).</li>
+  <li>A new <code>clearDefaultsOnGroupDeactivate</code> trigger (<code>onDocumentUpdated('groups/{groupId}')</code>) calls <code>clearDefaultGroupRefs</code> when <code>active</code> goes from true to false or <code>archived</code> from false to true. It ignores the membership-array updates. This covers #5.</li>
+  <li>Belt and braces: <code>GroupService.resolveDefaultGroupRef</code> also heals a default whose group is inactive. Today it heals only a missing group or an inactive membership. This covers the seconds before the trigger lands.</li>
+</ul>
+
+<h2>7. Migration and rollout</h2>
+<p><strong>Prerequisite:</strong> the Plan 4 release (B13, B14, B19) is deployed, and its pre-release checklist (profile cleanup <code>--apply</code>, member-email audit) is done.</p>
+
+<h3>7.1 Deploy order: two releases (Q1)</h3>
+<p>Each CI run deploys functions, then rules and indexes, then hosting. In a single release the rules would flip before the new client is served. Splitting the work into two releases also lets release B be reverted on its own.</p>
+<ol>
+  <li><strong>Before merging A:</strong> dry-run the backfill against production (read-only).</li>
+  <li><strong>Release A</strong> (functions + client + the two deny blocks): the index module and its writers, trigger linking, default-clear triggers, <code>getMemberPaymentMethods</code>, the client changes in §3. The A client works under the old rules and the new ones.</li>
+  <li><strong>Right after A's CI finishes:</strong> run the backfill with <code>--apply</code>, then a dry run again (expect 0 to create). Adds made between the deploy and the backfill still link: the invitee's next Groups load runs <code>linkInvitedMembers</code>.</li>
+  <li><strong>Wait 7 days.</strong> Watch function logs for <code>getMemberPaymentMethods</code> errors and for linking skips (one-row guard).</li>
+  <li><strong>Release B</strong> (rules only, plus rules specs and doc updates): §4. Afterwards, check <code>app_errors</code> for "Missing or insufficient permissions" from the paths in §7.2. Rollback = revert the PR. The A client runs fine on the old rules.</li>
+</ol>
+
+<h3>7.2 What an old open tab does</h3>
+<p><strong>After release A</strong> (rules unchanged), an old tab works fully, including its client-side linking. The stale-chunk prompt (<code>navigation-loading.service.ts</code>: "App Update Available", then a reload) appears only when the tab navigates to a lazy route whose chunk it hasn't loaded yet. A's hosting deploy removes the old hashed chunks. A tab that already loaded Summary and Members gets no prompt. The Android app (a WebView on the live site) behaves like a long-lived tab.</p>
+<p><strong>After release B</strong>, a tab still running the pre-A client fails these actions. B ships no hosting, so B itself never triggers the prompt.</p>
+<div class="tablewrap">
+<table>
+<tr><th>Old-client action</th><th>Result after the flip</th></tr>
+<tr><td>Summary, Pay</td><td>The user-doc read is denied: "Could not load payment methods. Please try again." The payment can't be recorded from that tab.</td></tr>
+<tr><td>Add a member with an email</td><td>The <code>users</code> query is denied and the snackbar shows "Missing or insufficient permissions." No member is added. Without an email, adding still works.</td></tr>
+<tr><td>Edit an unlinked row's email</td><td>Denied in the same way and not saved.</td></tr>
+<tr><td>Remove a registered member</td><td>The member is deleted, then the user-doc read is denied, so an error shows although the removal happened. The new trigger clears the default anyway.</td></tr>
+<tr><td>Deactivate or archive a group</td><td>The query is denied before the batch commits, so the whole change fails.</td></tr>
+<tr><td>Everything else</td><td>Works.</td></tr>
+</table>
+</div>
+<p>A reload fixes every one of these. The 7-day gap exists to make such tabs rare.</p>
+
+<h3>7.3 Backfill script</h3>
+<p><code>scripts/db/queries/backfill-verified-emails.ts</code> (<code>pnpm query backfill-verified-emails [-- --apply]</code>), with its logic in <code>scripts/db/verified-email-backfill.ts</code> and a <code>verified-email-backfill.test.mjs</code>, on the <code>profile-email-audit</code> pattern.</p>
+<ul>
+  <li>Targets production through <code>lib.ts</code> (ADC). The <code>env-guard</code> refuses to start while any <code>*_EMULATOR_HOST</code> is set. Dry run by default.</li>
+  <li>Source: Auth <code>listUsers</code>, accounts with <code>emailVerified &amp;&amp; email</code>, skipping <code>NON_USER_AUTH_EMAILS</code>. Login emails are unique in Auth, so the source has no conflicts.</li>
+  <li>Plan per address: <em>create</em> when there is no entry, <em>skip</em> when the entry has the same uid, <em>conflict</em> when it has another uid. A conflict is reported and never overwritten, because a newer confirmation wins.</li>
+  <li>Reports, without writing: pending unlinked members whose address now has an owner (expected few, since <code>linkInvitedMembers</code> already covers login emails). They link on the owner's next Groups load or through the admin repair.</li>
+  <li><code>--apply</code> uses <code>chunked-batch.ts</code> and refuses when Auth returned zero users. The second dry run must show 0 to create.</li>
+</ul>
+
+<h2>8. Test plan</h2>
+<h3>Rules (e2e/infra, client SDK on the test emulators)</h3>
+<ul>
+  <li><strong>New <code>users-read-rules.spec.ts</code>:</strong>
+    <ul>
+      <li>Allowed: a get of one's own doc, including before it exists, and the admin uid's get.</li>
+      <li>Denied: another user's get; <code>users</code> queries by <code>emailLower</code> and by <code>defaultGroupRef</code>; every client read and write on <code>verifiedEmails</code> and <code>paymentLookupLimits</code>, the owner included.</li>
+      <li>Run the denials against the old rules first and record that they failed there (house pattern).</li>
+    </ul>
+  </li>
+  <li><code>user-rules.spec.ts</code>: the cross-user default clear now expects a denial. The batch-shape tests are removed, because the triggers (functions specs) and the journeys cover that behaviour.</li>
+  <li><code>member-email-rules.spec.ts</code> / <code>member-rules.spec.ts</code>:
+    <ul>
+      <li>Denied: an admin creating a row with another user's <code>userRef</code>; an admin's null-to-X link.</li>
+      <li>Allowed: the creator's own row (including a profile email that lags the token); an admin's X-to-null unlink; an admin's email change on an unlinked row.</li>
+    </ul>
+  </li>
+</ul>
+<h3>Functions specs</h3>
+<ul>
+  <li><code>verified-emails.spec.ts</code> (new): id escaping, takeover, create-only for the backfill, <code>removeAllFor</code>.</li>
+  <li><code>payment-methods.spec.ts</code> (new):
+    <ul>
+      <li>Each refusal: signed out, bad ids, unverified, not a member, left member, a member id from another group, missing member.</li>
+      <li>Results: an unlinked row returns all <code>''</code>; the response holds exactly four keys, with no email or <code>emailOptOut</code>.</li>
+      <li>Rate limit: the 101st call is refused, and a new window resets it.</li>
+    </ul>
+  </li>
+  <li><code>email-lower-sync.spec.ts</code>:
+    <ul>
+      <li>Links on create and on an email change.</li>
+      <li>Does not link on an unlink, with no entry, when the uid already has a row in the group, or when the email changed again before the trigger ran.</li>
+    </ul>
+  </li>
+  <li><code>link-invited-members.spec.ts</code>: upserts the login address; links by a secondary address; one row per group; the existing hijack test stays.</li>
+  <li><code>member-email.spec.ts</code>: a confirmation writes the index and links pending members. <code>user-onboarding.spec.ts</code>: a Google sign-up writes the index, an unverified one does not. <code>delete-user-account.spec.ts</code>: removes the entries.</li>
+  <li><code>sync-group-member-uids.spec.ts</code>: a removed uid's default is cleared, and other users' defaults are untouched. New <code>clear-defaults-on-deactivate.spec.ts</code>.</li>
+  <li>Admin report and repair specs: matching goes through the index.</li>
+</ul>
+<h3>E2E journeys (poll for trigger results; never clear data between tests)</h3>
+<ul>
+  <li>Members:
+    <ul>
+      <li>Adding by login email links the row; adding by a confirmed secondary address links it (seed an index entry through the Admin SDK); editing an unlinked row's email links it.</li>
+      <li>Adding the same person under a second address leaves that row unlinked.</li>
+      <li>Removing a registered member clears their default (now polled).</li>
+    </ul>
+  </li>
+  <li>Groups: "should toggle group active status" now polls for the other user's cleared default.</li>
+  <li>Summary: the Pay dialog shows a linked payee's handles, and shows no handles for an unlinked payee.</li>
+  <li>Account/auth: a verified sign-up, and an email change, then adding by that address links it.</li>
+  <li>Update <code>scripts/test-area/areas.mjs</code> for the new specs. Run <code>pnpm test:area</code> for members, summary, groups, account, auth and admin, plus <code>pnpm test:area --check</code>.</li>
+</ul>
+
+<h2>9. Risks</h2>
+<ul>
+  <li><strong>Old tabs and the Android WebView</strong> fail five actions after the flip (§7.2). Mitigation: two releases with a 7-day gap; the errors are visible and a reload fixes them.</li>
+  <li><strong>The consent gap enables handle harvesting.</strong> An admin who knows someone's address can add them, which auto-links them, and then read their handles. The same is true today, and today anyone can read every user's handles. Mitigation: the per-uid limit bounds bulk harvesting. A consent step is Q2.</li>
+  <li><strong>Trigger loops and races.</strong> A link write re-fires <code>syncMemberEmailLower</code> and <code>syncGroupMemberUids</code>. The re-runs are no-ops because <code>email</code> is unchanged and the arrays are recomputed. The link re-checks the doc's current <code>email</code> before writing.</li>
+  <li><strong>A function rename looks like a deletion</strong> and blocks the non-interactive CI deploy. Keep the existing export names and only add new ones.</li>
+  <li><strong>Cold start</strong> on the first Pay of a session: 1-3 s under the loading overlay. This is acceptable.</li>
+  <li><strong>Address takeover</strong> moves a recycled address's future invites to its new owner (intended), and existing links stay as they are. An admin who types a secondary address learns whose it is (the owner's caveat; unchanged).</li>
+  <li><strong>Rules <code>get()</code> semantics.</strong> The design removes every rules <code>get()</code> on other users' docs except the own-row <code>emailMatchesLinkedUser</code>. Per the Phase 2 lesson, the own-row creator test checks it on the emulator rather than relying on documentation.</li>
+</ul>
+
+<h2>10. Size estimate</h2>
+<div class="tablewrap">
+<table>
+<tr><th>Task</th><th>Release</th><th>Size</th></tr>
+<tr><td>T1 <code>verified-emails.ts</code> module + spec</td><td>A</td><td>S</td></tr>
+<tr><td>T2 Index writers: sign-up trigger, <code>linkInvitedMembers</code> upsert, <code>confirmMemberEmailChange</code>, <code>deleteUserAccount</code> + specs</td><td>A</td><td>M</td></tr>
+<tr><td>T3 Server linking: <code>syncMemberEmailLower</code> link + one-row guard; multi-address <code>linkInvitedMembers</code>; admin report and repair, <code>link-orphaned-members</code> script on the index + specs</td><td>A</td><td>M</td></tr>
+<tr><td>T4 Default clears: <code>syncGroupMemberUids</code> removed-uid clear, <code>clearDefaultsOnGroupDeactivate</code> + specs</td><td>A</td><td>S</td></tr>
+<tr><td>T5 <code>getMemberPaymentMethods</code> + generalized allowance helper + nightly cleanup + spec</td><td>A</td><td>S-M</td></tr>
+<tr><td>T6 Client:
+  <ul>
+    <li><code>getPaymentMethods</code> through the callable;</li>
+    <li>drop the users queries and cross-user writes in <code>member.service</code> and <code>group.service</code>;</li>
+    <li>fold <code>updateMemberWithUserMatching</code> into <code>updateMember</code> (the dup-check fix);</li>
+    <li><code>resolveDefaultGroupRef</code> heals an inactive group;</li>
+    <li>unit specs.</li>
+  </ul></td><td>A</td><td>M</td></tr>
+<tr><td>T7 Backfill script + logic module + <code>.test.mjs</code></td><td>A</td><td>S</td></tr>
+<tr><td>T8 E2E journeys + <code>areas.mjs</code></td><td>A</td><td>M</td></tr>
+<tr><td>T9 Rules flip (§4) + rules specs, each denial run against the old rules first</td><td>B</td><td>M</td></tr>
+<tr><td>T10 Docs: the hardening doc's Phase 3 status, the follow-ups list, memory</td><td>B</td><td>XS</td></tr>
+</table>
+</div>
+<p>Roughly 3 builder-days in two PRs: A is T1-T8, B is T9-T10.</p>
+
+<h2>11. Questions for the owner</h2>
+<ol>
+  <li><strong>Two releases, with the rules flip 7 days after the code?</strong> Recommended: yes. A single release flips the rules before hosting serves the new client, and it breaks every pre-A tab and the Android WebView for five actions. Splitting also lets the rules be reverted on their own.</li>
+  <li><strong>Should payment handles of an auto-linked member be visible straight away?</strong> An admin can add anyone whose address they know and then read that person's handles. Recommended: yes for now, with the 100/day per-caller limit. That is far tighter than today, where every handle is readable. A consent step (handles shown only after the member has opened the group) would be a follow-up with its own flag.</li>
+  <li><strong>Link through the member trigger (async, about 1-2 s) or through a new add-member callable (synchronous)?</strong> Recommended: the trigger. It covers add, edit, admin batches and any future path with no new client API. The only cost is that the registered badge appears a moment after Save.</li>
+  <li><strong>Move the cross-user <code>defaultGroupRef</code> clears to triggers and delete the B13 exception rule?</strong> Recommended: yes, with the client self-heal kept as a fallback. Healing on the client alone would leave stale defaults in other users' data until they next sign in, and would keep the rule exception alive.</li>
+  <li><strong>Keep an old login address in the index after a login-email change?</strong> Recommended: keep it. The feature is "every address you proved", and a takeover handles recycling. The alternative is to remove it on change, which needs a "which address did this replace" hook in <code>linkInvitedMembers</code>.</li>
+  <li><strong>Keep the admin uid's read on <code>users</code>?</strong> Recommended: keep it, for parity with <code>mail</code> and <code>app_errors</code>. No current client path needs it, so dropping it is also safe.</li>
+</ol>
+
+<h2>12. Noticed in passing (not in scope)</h2>
+<ul>
+  <li><code>navigation-loading.service.ts</code> subscribes to <code>router.events.pipe(takeUntilDestroyed())</code>, which is RxJS. The follow-ups list names only <code>account.component.ts</code> as remaining RxJS.</li>
+  <li><code>summary.component</code> <code>payExpenses</code> uses <code>dialogRef.afterClosed().subscribe</code>, which is RxJS too.</li>
+</ul>
+
+</body>
+</html>

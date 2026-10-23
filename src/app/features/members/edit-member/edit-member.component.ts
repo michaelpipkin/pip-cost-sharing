@@ -6,12 +6,7 @@ import {
   Signal,
   signal,
 } from '@angular/core';
-import {
-  disabled,
-  form,
-  FormField,
-  required,
-} from '@angular/forms/signals';
+import { disabled, form, FormField, required } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
 import {
   MAT_DIALOG_DATA,
@@ -34,12 +29,26 @@ import { DefaultButtonDirective } from '@directives/default-button.directive';
 import { EditMemberForm, Member } from '@models/member';
 import { User } from '@models/user';
 import { AnalyticsService } from '@services/analytics.service';
+import { AppCheckErrorHandlerService } from '@services/app-check-error-handler.service';
 import { GroupService } from '@services/group.service';
-import { MemberService } from '@services/member.service';
+import {
+  DuplicateMemberEmailError,
+  MemberService,
+} from '@services/member.service';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
-import { callableError } from '@utils/callable-error.util';
+import {
+  AUTH_LOOKUP_UNAVAILABLE,
+  callableError,
+  CONFIRMATION_RECENTLY_SENT,
+  isAuthLookupUnavailable,
+  isConfirmationCooldownRefusal,
+  isDuplicateMemberEmailRefusal,
+  isUnverifiedLoginRefusal,
+  OTHER_MEMBER_HAS_EMAIL,
+  VERIFY_LOGIN_EMAIL,
+} from '@utils/callable-error.util';
 import { singleEmail } from '@utils/email-validation';
 import { DocumentReference } from 'firebase/firestore';
 
@@ -82,6 +91,7 @@ export class EditMemberComponent {
   protected readonly loading = inject(LoadingService);
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(AnalyticsService);
+  protected readonly appCheckErrorHandler = inject(AppCheckErrorHandlerService);
   protected readonly data: any = inject(MAT_DIALOG_DATA);
 
   readonly member: Member = this.data.member;
@@ -193,13 +203,24 @@ export class EditMemberComponent {
     // The server's message, without the HTTP status the SDK appends.
     const { code, message: serverMessage } = callableError(error);
     let message: string;
-    if (code === 'functions/resource-exhausted') {
+    if (isConfirmationCooldownRefusal(error)) {
+      // The address got a confirmation mail within the hour (from anyone).
+      message = CONFIRMATION_RECENTLY_SENT;
+    } else if (code === 'functions/resource-exhausted') {
       message = 'Too many email change requests. Please try again tomorrow.';
+    } else if (isUnverifiedLoginRefusal(error)) {
+      message = VERIFY_LOGIN_EMAIL;
+    } else if (isAuthLookupUnavailable(error)) {
+      // An Auth outage on the server (which logs it); saving again can work.
+      message = AUTH_LOOKUP_UNAVAILABLE;
     } else if (
-      code === 'functions/permission-denied' &&
-      serverMessage === 'Verify your login email first.'
+      error instanceof DuplicateMemberEmailError ||
+      isDuplicateMemberEmailRefusal(error)
     ) {
-      message = 'Verify your login email first.';
+      // Another member of the group has the address: the client-side check
+      // (unlinked rows) or the server's (one's own row). An outcome, shown
+      // in the app's one wording.
+      message = OTHER_MEMBER_HAS_EMAIL;
     } else if (error instanceof Error) {
       message = serverMessage;
       if (!code || !EXPECTED_CALLABLE_CODES.has(code)) {
@@ -212,9 +233,9 @@ export class EditMemberComponent {
     } else {
       message = 'Something went wrong - could not edit member';
     }
-    this.snackbar.openFromComponent(CustomSnackbarComponent, {
-      data: { message },
-    });
+    // An App Check refusal (requestMemberEmailChange is a callable, and
+    // callables enforce it) gets the help dialog; anything else, `message`.
+    this.appCheckErrorHandler.handle(error, message);
   }
 
   /**
@@ -222,8 +243,9 @@ export class EditMemberComponent {
    * then a changed email goes through the server (requestMemberEmailChange),
    * which applies the verified sign-in address at once and otherwise mails a
    * confirmation link to the new address. If that request is refused (the
-   * daily limit, a duplicate address), only the refusal is reported and the
-   * dialog stays open; the other fields are already saved.
+   * daily limit, the address's hourly cooldown, a duplicate address), only
+   * the refusal is reported and the dialog stays open; the other fields are
+   * already saved.
    */
   async #saveOwnRow(
     memberRef: DocumentReference<Member>,

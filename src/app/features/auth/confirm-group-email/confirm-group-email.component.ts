@@ -13,7 +13,13 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
 import { ROUTE_PATHS } from '@constants/routes.constants';
 import { MemberService } from '@services/member.service';
-import { callableError } from '@utils/callable-error.util';
+import {
+  AUTH_LOOKUP_UNAVAILABLE,
+  callableError,
+  DUPLICATE_MEMBER_EMAIL,
+  OTHER_MEMBER_HAS_EMAIL,
+  VERIFY_LOGIN_EMAIL,
+} from '@utils/callable-error.util';
 
 type ErrorOutcome =
   | 'invalid'
@@ -22,6 +28,7 @@ type ErrorOutcome =
   | 'wrong-account'
   | 'unverified'
   | 'inactive'
+  | 'unavailable'
   | 'failed';
 type Outcome = 'confirming' | 'confirmed' | ErrorOutcome;
 
@@ -30,11 +37,13 @@ const ERROR_MESSAGES: Record<ErrorOutcome, string> = {
     "This link has expired or was already used. Request a new one from the group's Members page.",
   unlinked:
     "You're no longer linked to this group membership, so the change can't be applied.",
-  duplicate: 'Another member of this group already uses that address.',
+  duplicate: OTHER_MEMBER_HAS_EMAIL,
   'wrong-account': 'Sign in with the account that requested this change.',
-  unverified: 'Verify your login email first.',
+  unverified: VERIFY_LOGIN_EMAIL,
   inactive:
     "You're no longer an active member of this group, so the change can't be applied.",
+  unavailable:
+    "Couldn't check your account right now. Please try the link again.",
   failed:
     'Something went wrong - your group email could not be confirmed. Please try the link again.',
 };
@@ -42,7 +51,8 @@ const ERROR_MESSAGES: Record<ErrorOutcome, string> = {
 /**
  * confirmMemberEmailChange's refusals, by code and the stable message the
  * server sends with it (functions/src/member-email.ts; the two projects
- * share no module, so the messages are repeated here). Anything else is
+ * share no module, so the messages are repeated here, or in
+ * callable-error.util when other screens map them too). Anything else is
  * 'failed': no guessing from the code alone.
  */
 const SERVER_OUTCOMES: Record<string, ErrorOutcome> = {
@@ -50,13 +60,14 @@ const SERVER_OUTCOMES: Record<string, ErrorOutcome> = {
     'invalid',
   'functions/failed-precondition|This group membership is no longer linked to your account.':
     'unlinked',
-  'functions/already-exists|A member with this email address already exists in the group.':
-    'duplicate',
+  [`functions/already-exists|${DUPLICATE_MEMBER_EMAIL}`]: 'duplicate',
   'functions/permission-denied|Sign in with the account that requested this change.':
     'wrong-account',
-  'functions/permission-denied|Verify your login email first.': 'unverified',
+  [`functions/permission-denied|${VERIFY_LOGIN_EMAIL}`]: 'unverified',
   'functions/permission-denied|User must be an active member of the group':
     'inactive',
+  // The Auth lookup failed (an outage); the link is still unused.
+  [`functions/unavailable|${AUTH_LOOKUP_UNAVAILABLE}`]: 'unavailable',
 };
 
 /**
@@ -111,7 +122,8 @@ export class ConfirmGroupEmailComponent {
     });
     this.loading.loadingOn();
     try {
-      const { email } = await this.memberService.confirmMemberEmailChange(token);
+      const { email } =
+        await this.memberService.confirmMemberEmailChange(token);
       this.email.set(email);
       this.outcome.set('confirmed');
     } catch (error) {
@@ -119,7 +131,9 @@ export class ConfirmGroupEmailComponent {
       // MemberService logs any code it does not expect. An expected code
       // with a message this page doesn't know (only possible from a newer
       // server) is not logged; it shows the generic failure.
-      this.outcome.set(SERVER_OUTCOMES[`${String(code)}|${message}`] ?? 'failed');
+      this.outcome.set(
+        SERVER_OUTCOMES[`${String(code)}|${message}`] ?? 'failed'
+      );
     } finally {
       this.loading.loadingOff();
     }

@@ -1,4 +1,6 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 // Plain Playwright, not ../fixtures: this spec needs no page or browser.
 import { expect, test } from '@playwright/test';
 import {
@@ -35,13 +37,14 @@ import {
  *   or their verified sign-in address.
  * - userRef: an admin may set it from null (with the same email match) or
  *   clear it; X to Y is denied; a member never touches it.
- * - email on a linked doc: only the member themself, only to their verified
- *   sign-in address (Account > Profile's sync). Any other change goes
- *   through the requestMemberEmailChange callable (Admin SDK).
+ * - email on a linked doc: no client, the member or an admin. Changes go
+ *   through the requestMemberEmailChange / updateMemberEmails callables
+ *   (Admin SDK).
  * - email on an unlinked doc: admins, as before (edit-member's
  *   updateMemberWithUserMatching, which may link in the same write).
  * - emailLower, when a client writes it, must equal email lowercased.
- * - the callable's token and rate-limit collections are server-only.
+ * - the callable's token, rate-limit and recipient-cooldown collections,
+ *   and the group-mail callables' per-caller limits, are server-only.
  * Every denial has a positive control on the same doc by the same user.
  */
 
@@ -113,7 +116,10 @@ test.describe(
           [
             'victim userRef with the email field left out',
             () =>
-              setDoc(fresh(), newMember({ userRef: userRef(db, users.victim) })),
+              setDoc(
+                fresh(),
+                newMember({ userRef: userRef(db, users.victim) })
+              ),
           ],
           [
             'userRef to a user doc that does not exist',
@@ -239,7 +245,10 @@ test.describe(
         // A legacy profile email that fails the single-address rule makes
         // add-group store '' instead.
         await expectAllowed(addOwnRow(''), 'blank');
-        await expectDenied(addOwnRow(randomEmail('creator')), 'another address');
+        await expectDenied(
+          addOwnRow(randomEmail('creator')),
+          'another address'
+        );
       });
     });
 
@@ -301,9 +310,9 @@ test.describe(
           'link by the profile email'
         );
       });
-      expect((await readMember(members.unlinkedLink.key))?.['userRef']?.id).toBe(
-        users.linkable.uid
-      );
+      expect(
+        (await readMember(members.unlinkedLink.key))?.['userRef']?.id
+      ).toBe(users.linkable.uid);
       await resetMember(members.unlinkedLink);
     });
 
@@ -349,10 +358,19 @@ test.describe(
       });
     });
 
-    test('a linked member’s email: only the member, only to their verified sign-in address', async () => {
+    // M1/M2 (2026-10-23): no client changes a linked member's email, not
+    // even the member to their own verified address. Account > Profile's
+    // Sync and the group email update dialog go through the
+    // updateMemberEmails callable, which checks for duplicates and cancels
+    // pending confirmation links; edit-member's own-row change through
+    // requestMemberEmailChange.
+    test('a linked member’s email: no client may change it, the member or an admin', async () => {
       await resetMember(members.target);
       await resetMember(members.admin);
-      await withDb(users.admin, async (db) => {
+      await withSession(users.admin, async (db, auth) => {
+        // A fresh token, so the verified address is in its claims: the
+        // denials below can only come from the linked-email rule.
+        await auth.currentUser!.getIdToken(true);
         const target = memberDoc(db, members.target.key);
         const ownRow = memberDoc(db, members.admin.key);
         const through = await notDenied([
@@ -361,7 +379,7 @@ test.describe(
             () => updateDoc(target, { email: randomEmail('admin-set') }),
           ],
           [
-            'admin recases a linked member’s email',
+            'admin sets a linked member’s email to its user’s address, recased',
             () =>
               updateDoc(target, { email: users.target.email.toUpperCase() }),
           ],
@@ -369,12 +387,15 @@ test.describe(
             'admin changes their own linked email to another address',
             () => updateDoc(ownRow, { email: randomEmail('admin-own') }),
           ],
+          [
+            'admin sets their own linked email to their verified address, recased',
+            () => updateDoc(ownRow, { email: users.admin.email.toUpperCase() }),
+          ],
         ]);
         expect(through).toEqual([]);
 
-        // Positive controls: edit-member's Save by an admin on a linked row
-        // (email sent unchanged), and the admin's own row synced to their
-        // own verified address.
+        // Positive control: edit-member's Save by an admin on a linked row
+        // (email sent unchanged).
         await expectAllowed(
           updateDoc(target, {
             displayName: `Target ${randomUUID().slice(0, 8)}`,
@@ -384,15 +405,17 @@ test.describe(
           }),
           'admin save with the email unchanged'
         );
-        await expectAllowed(
-          updateDoc(ownRow, { email: users.admin.email.toUpperCase() }),
-          'admin’s own row to their verified address'
-        );
       });
 
-      await withDb(users.target, async (db) => {
+      await withSession(users.target, async (db, auth) => {
+        const { claims } = await auth.currentUser!.getIdTokenResult(true);
+        expect(claims['email_verified']).toBe(true);
         const own = memberDoc(db, members.target.key);
         const through = await notDenied([
+          [
+            'self to their verified address, recased (the former Profile Sync)',
+            () => updateDoc(own, { email: users.target.email.toUpperCase() }),
+          ],
           [
             'self to another address',
             () => updateDoc(own, { email: randomEmail('self-other') }),
@@ -409,16 +432,8 @@ test.describe(
         ]);
         expect(through).toEqual([]);
 
-        // Account > Profile's updateAllMemberEmails (the verified address),
-        // and edit-member's self-save of displayName.
-        await expectAllowed(
-          updateDoc(own, { email: users.target.email.toUpperCase() }),
-          'self to their verified address'
-        );
-        await expectAllowed(
-          updateDoc(own, { email: users.target.email }),
-          'and back'
-        );
+        // Positive control: edit-member's self-save of displayName (email
+        // sent unchanged).
         await expectAllowed(
           updateDoc(own, {
             displayName: members.target.displayName,
@@ -433,7 +448,9 @@ test.describe(
         email: users.target.email,
         displayName: members.target.displayName,
       });
-      await resetMember(members.admin);
+      expect(await readMember(members.admin.key)).toMatchObject({
+        email: members.admin.email,
+      });
     });
 
     test('an unverified sign-in address is never a provable one', async () => {
@@ -445,6 +462,8 @@ test.describe(
           updateDoc(own, { email: users.unverified.email.toUpperCase() }),
           'own unverified address'
         );
+        // (Every linked-email change is denied now; this stays as a guard
+        // should a self-write branch ever return.)
         await expectAllowed(
           updateDoc(own, { displayName: members.unverified.displayName }),
           'unrelated self-write'
@@ -470,6 +489,63 @@ test.describe(
           ['delete a token', () => deleteDoc(token)],
           ['read own rate limit', () => getDoc(limit)],
           ['reset own rate limit', () => setDoc(limit, { count: 0 })],
+        ]);
+        expect(through).toEqual([]);
+      });
+    });
+
+    // The access tests below pass on Firestore's default deny
+    // alone, so they can't notice a server-only block being deleted (and
+    // later shadowed by a broad allow). This pins the explicit denies in
+    // the rules source, and that no catch-all match exists.
+    test('the rules declare every server-only collection explicitly', () => {
+      const rules = readFileSync(
+        fileURLToPath(new URL('../../firestore.rules', import.meta.url)),
+        'utf8'
+      );
+      const missing = [
+        'memberEmailChangeTokens/{tokenId}',
+        'memberEmailChangeLimits/{uid}',
+        'memberEmailRecipientCooldown/{addressHash}',
+        'groupMailLimits/{uid}',
+      ].filter((path) => {
+        const escaped = path.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+        return !new RegExp(
+          `match /${escaped} \\{\\s*allow read, write: if false;\\s*\\}`
+        ).test(rules);
+      });
+      expect(missing).toEqual([]);
+      expect(rules).not.toMatch(/match \/\{document=\*\*\}/);
+    });
+
+    test('the recipient cooldowns and group-mail limits are server-only', async () => {
+      const { db: adminDb } = getSeedAdmin();
+      const hash = createHash('sha256')
+        .update(randomEmail('cooldown'))
+        .digest('hex');
+      await adminDb.doc(`memberEmailRecipientCooldown/${hash}`).set({
+        expiresAt: new Date(Date.now() + 60_000),
+      });
+      await adminDb.doc(`groupMailLimits/${users.self.uid}`).set({
+        hours: {},
+      });
+      await withDb(users.self, async (db) => {
+        const cooldown = doc(db, 'memberEmailRecipientCooldown', hash);
+        const limit = doc(db, 'groupMailLimits', users.self.uid);
+        const newCooldown = doc(
+          db,
+          'memberEmailRecipientCooldown',
+          `c-${randomUUID()}`
+        );
+        // Positive control: the same user can still read their own profile.
+        expect((await getDoc(userRef(db, users.self))).exists()).toBe(true);
+        const through = await notDenied([
+          ['read a cooldown', () => getDoc(cooldown)],
+          ['clear a cooldown', () => deleteDoc(cooldown)],
+          ['write a cooldown', () => setDoc(newCooldown, { expiresAt: 0 })],
+          ['read own group-mail limit', () => getDoc(limit)],
+          ['reset own group-mail limit', () => setDoc(limit, { hours: {} })],
+          ['delete own group-mail limit', () => deleteDoc(limit)],
         ]);
         expect(through).toEqual([]);
       });

@@ -1,5 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { callableError } from './callable-error.util';
+import {
+  AUTH_LOOKUP_UNAVAILABLE,
+  callableError,
+  CONFIRMATION_RECENTLY_SENT,
+  DUPLICATE_MEMBER_EMAIL,
+  GROUP_MAIL_LIMIT_EXCEEDED,
+  GROUP_MAIL_LIMIT_REACHED,
+  isAuthLookupUnavailable,
+  isConfirmationCooldownRefusal,
+  isDuplicateMemberEmailRefusal,
+  isGroupMailLimitRefusal,
+  isInvalidLoginEmailRefusal,
+  isUnverifiedLoginRefusal,
+  OTHER_MEMBER_HAS_EMAIL,
+} from './callable-error.util';
 
 describe('callableError', () => {
   // The Functions SDK builds a server refusal as
@@ -34,5 +48,218 @@ describe('callableError', () => {
   it('handles values that are not errors', () => {
     expect(callableError('nope')).toEqual({ code: undefined, message: '' });
     expect(callableError(null)).toEqual({ code: undefined, message: '' });
+  });
+});
+
+describe('isUnverifiedLoginRefusal', () => {
+  const refusal = (code: string, message: string) =>
+    Object.assign(new Error(message), { code });
+
+  it('matches the member-email callables’ unverified-login refusal', () => {
+    expect(
+      isUnverifiedLoginRefusal(
+        refusal(
+          'functions/permission-denied',
+          'Verify your login email first. [403]'
+        )
+      )
+    ).toBe(true);
+  });
+
+  it('does not match another permission-denied refusal or another code', () => {
+    expect(
+      isUnverifiedLoginRefusal(
+        refusal('functions/permission-denied', 'Not your member record [403]')
+      )
+    ).toBe(false);
+    expect(
+      isUnverifiedLoginRefusal(
+        refusal('functions/internal', 'Verify your login email first.')
+      )
+    ).toBe(false);
+    expect(isUnverifiedLoginRefusal('nope')).toBe(false);
+  });
+});
+
+describe('isAuthLookupUnavailable', () => {
+  const refusal = (code: string, message: string) =>
+    Object.assign(new Error(message), { code });
+
+  it('matches the member-email callables’ failed Auth lookup', () => {
+    expect(AUTH_LOOKUP_UNAVAILABLE).toBe(
+      "Couldn't check your account right now. Please try again."
+    );
+    expect(
+      isAuthLookupUnavailable(
+        refusal('functions/unavailable', `${AUTH_LOOKUP_UNAVAILABLE} [503]`)
+      )
+    ).toBe(true);
+  });
+
+  it('does not match another unavailable error or the same text under another code', () => {
+    expect(
+      isAuthLookupUnavailable(refusal('functions/unavailable', 'unavailable'))
+    ).toBe(false);
+    expect(
+      isAuthLookupUnavailable(
+        refusal('functions/internal', AUTH_LOOKUP_UNAVAILABLE)
+      )
+    ).toBe(false);
+    expect(isAuthLookupUnavailable(null)).toBe(false);
+  });
+});
+
+describe('isInvalidLoginEmailRefusal', () => {
+  const refusal = (code: string, message: string) =>
+    Object.assign(new Error(message), { code });
+
+  it('matches updateMemberEmails’ invalid-login-email refusal', () => {
+    expect(
+      isInvalidLoginEmailRefusal(
+        refusal(
+          'functions/failed-precondition',
+          'Your login email is not a single valid email address. [400]'
+        )
+      )
+    ).toBe(true);
+  });
+
+  it('does not match another failed-precondition refusal or another code', () => {
+    expect(
+      isInvalidLoginEmailRefusal(
+        refusal(
+          'functions/failed-precondition',
+          'This link has expired or was already used. [400]'
+        )
+      )
+    ).toBe(false);
+    expect(
+      isInvalidLoginEmailRefusal(
+        refusal(
+          'functions/internal',
+          'Your login email is not a single valid email address.'
+        )
+      )
+    ).toBe(false);
+    expect(isInvalidLoginEmailRefusal(null)).toBe(false);
+  });
+});
+
+describe('isGroupMailLimitRefusal', () => {
+  const refusal = (code: string, message: string) =>
+    Object.assign(new Error(message), { code });
+
+  it('matches the group-mail callables’ daily-limit refusal', () => {
+    expect(GROUP_MAIL_LIMIT_REACHED).toBe(
+      "You've reached today's limit for group emails. Try again tomorrow."
+    );
+    expect(
+      isGroupMailLimitRefusal(
+        refusal(
+          'functions/resource-exhausted',
+          `${GROUP_MAIL_LIMIT_REACHED} [429]`
+        )
+      )
+    ).toBe(true);
+    // The call needs more than is left.
+    expect(GROUP_MAIL_LIMIT_EXCEEDED).toBe(
+      "This would go over today's limit for group emails. Try again tomorrow."
+    );
+    expect(
+      isGroupMailLimitRefusal(
+        refusal(
+          'functions/resource-exhausted',
+          `${GROUP_MAIL_LIMIT_EXCEEDED} [429]`
+        )
+      )
+    ).toBe(true);
+  });
+
+  it('does not match another resource-exhausted refusal or another code', () => {
+    // sendGroupInvite's own per-member cooldown.
+    expect(
+      isGroupMailLimitRefusal(
+        refusal(
+          'functions/resource-exhausted',
+          'An invitation was already sent to this address recently. Try again in 3 hour(s). [429]'
+        )
+      )
+    ).toBe(false);
+    expect(
+      isGroupMailLimitRefusal(
+        refusal('functions/internal', GROUP_MAIL_LIMIT_REACHED)
+      )
+    ).toBe(false);
+    expect(isGroupMailLimitRefusal(undefined)).toBe(false);
+  });
+});
+
+describe('isConfirmationCooldownRefusal', () => {
+  const refusal = (code: string, message: string) =>
+    Object.assign(new Error(message), { code });
+
+  it('matches requestMemberEmailChange’s per-recipient cooldown refusal', () => {
+    expect(CONFIRMATION_RECENTLY_SENT).toBe(
+      'A confirmation email was sent to that address recently. Try again in an hour.'
+    );
+    expect(
+      isConfirmationCooldownRefusal(
+        refusal(
+          'functions/resource-exhausted',
+          `${CONFIRMATION_RECENTLY_SENT} [429]`
+        )
+      )
+    ).toBe(true);
+  });
+
+  it('does not match the per-account daily limit or another code', () => {
+    expect(
+      isConfirmationCooldownRefusal(
+        refusal(
+          'functions/resource-exhausted',
+          'Too many email change requests. Please try again tomorrow. [429]'
+        )
+      )
+    ).toBe(false);
+    expect(
+      isConfirmationCooldownRefusal(
+        refusal('functions/internal', CONFIRMATION_RECENTLY_SENT)
+      )
+    ).toBe(false);
+  });
+});
+
+describe('isDuplicateMemberEmailRefusal', () => {
+  const refusal = (code: string, message: string) =>
+    Object.assign(new Error(message), { code });
+
+  it('matches the member-email callables’ duplicate-address refusal', () => {
+    expect(DUPLICATE_MEMBER_EMAIL).toBe(
+      'A member with this email address already exists in the group.'
+    );
+    expect(
+      isDuplicateMemberEmailRefusal(
+        refusal('functions/already-exists', `${DUPLICATE_MEMBER_EMAIL} [409]`)
+      )
+    ).toBe(true);
+  });
+
+  it('does not match another already-exists refusal or another code', () => {
+    expect(
+      isDuplicateMemberEmailRefusal(
+        refusal('functions/already-exists', 'Something else exists. [409]')
+      )
+    ).toBe(false);
+    expect(
+      isDuplicateMemberEmailRefusal(
+        refusal('functions/internal', DUPLICATE_MEMBER_EMAIL)
+      )
+    ).toBe(false);
+  });
+
+  it('is shown in the app’s one wording for a duplicate address', () => {
+    expect(OTHER_MEMBER_HAS_EMAIL).toBe(
+      'Another member of this group already uses that address.'
+    );
   });
 });

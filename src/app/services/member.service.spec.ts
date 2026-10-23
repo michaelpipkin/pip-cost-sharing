@@ -3,7 +3,11 @@ import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import * as firestoreModule from 'firebase/firestore';
 import * as functionsModule from 'firebase/functions';
-import { MemberEmailUpdateError, MemberService } from './member.service';
+import {
+  DuplicateMemberEmailError,
+  memberEmailUpdateMessage,
+  MemberService,
+} from './member.service';
 import { UserStore } from '@store/user.store';
 import { MemberStore } from '@store/member.store';
 import { AnalyticsService } from '@services/analytics.service';
@@ -18,6 +22,14 @@ function makeSnap(docs: any[] = []) {
 
 function makeDocSnap(id: string, data: any, ref?: any) {
   return { id, data: () => data, ref: ref ?? { id } };
+}
+
+/** The member-email callables' failed Auth lookup, as the SDK throws it. */
+function authLookupUnavailable(): Error {
+  return Object.assign(
+    new Error("Couldn't check your account right now. Please try again. [503]"),
+    { code: 'functions/unavailable' }
+  );
 }
 
 describe('MemberService', () => {
@@ -213,11 +225,13 @@ describe('MemberService', () => {
         makeSnap([makeDocSnap('m1', { email: 'dup@test.com' })]) as any
       );
 
-      await expect(
-        service.addMemberToGroup('group-1', { email: 'dup@test.com' })
-      ).rejects.toThrow(
-        'A member with this email address already exists in the group.'
+      const added = service.addMemberToGroup('group-1', {
+        email: 'dup@test.com',
+      });
+      await expect(added).rejects.toThrow(
+        'Another member of this group already uses that address.'
       );
+      await expect(added).rejects.toBeInstanceOf(DuplicateMemberEmailError);
     });
 
     it('should link userRef when a matching user account exists', async () => {
@@ -319,11 +333,13 @@ describe('MemberService', () => {
         makeSnap([makeDocSnap('other-member', {})]) as any
       );
 
-      await expect(
-        service.updateMember(mockMemberRef, { email: 'dup@test.com' })
-      ).rejects.toThrow(
-        'A member with this email address already exists in the group.'
+      const updated = service.updateMember(mockMemberRef, {
+        email: 'dup@test.com',
+      });
+      await expect(updated).rejects.toThrow(
+        'Another member of this group already uses that address.'
       );
+      await expect(updated).rejects.toBeInstanceOf(DuplicateMemberEmailError);
     });
 
     it('should call updateDoc when the email is unique', async () => {
@@ -368,13 +384,95 @@ describe('MemberService', () => {
   });
 
   describe('updateMemberWithUserMatching', () => {
-    const mockMemberRef = { id: 'member-1' } as any;
+    const mockMemberRef = { id: 'member-1', parent: { id: 'members' } } as any;
+
+    // An admin's edit of an unlinked member's email used to skip the
+    // duplicate check the callables make (DUPLICATE_MEMBER_EMAIL), so two
+    // rows of one group could end up on one address.
+    describe('the duplicate-address check', () => {
+      const DUPLICATE =
+        'Another member of this group already uses that address.';
+
+      it('refuses an address another member of the group has, writing nothing', async () => {
+        const getDocs = vi
+          .spyOn(firestoreModule, 'getDocs')
+          .mockResolvedValueOnce(
+            makeSnap([makeDocSnap('other-member', {})]) as any
+          );
+
+        const saved = service.updateMemberWithUserMatching(
+          mockMemberRef,
+          { email: 'Taken@Test.com' },
+          null,
+          'old@test.com'
+        );
+        await expect(saved).rejects.toThrow(DUPLICATE);
+        await expect(saved).rejects.toBeInstanceOf(DuplicateMemberEmailError);
+
+        // Case-insensitive: the group's members are queried by emailLower.
+        expect(firestoreModule.query).toHaveBeenCalledWith(
+          mockMemberRef.parent,
+          expect.anything(),
+          expect.anything()
+        );
+        expect(firestoreModule.where).toHaveBeenCalledWith(
+          'emailLower',
+          '==',
+          'taken@test.com'
+        );
+        // Refused before any user lookup or write.
+        expect(getDocs).toHaveBeenCalledOnce();
+        expect(firestoreModule.updateDoc).not.toHaveBeenCalled();
+        expect(mockAnalytics.logError).not.toHaveBeenCalled();
+      });
+
+      it('ignores the member’s own doc in the result', async () => {
+        vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
+          makeSnap([makeDocSnap('member-1', {})]) as any
+        );
+
+        await service.updateMemberWithUserMatching(
+          mockMemberRef,
+          { email: 'mine@test.com' },
+          null,
+          'old@test.com'
+        );
+
+        expect(firestoreModule.updateDoc).toHaveBeenCalledWith(mockMemberRef, {
+          email: 'mine@test.com',
+        });
+      });
+
+      it('is skipped when the email is cleared or unchanged', async () => {
+        const getDocs = vi.spyOn(firestoreModule, 'getDocs');
+
+        await service.updateMemberWithUserMatching(
+          mockMemberRef,
+          { email: '' },
+          null,
+          'old@test.com'
+        );
+        await service.updateMemberWithUserMatching(
+          mockMemberRef,
+          { email: 'OLD@test.com', displayName: 'Renamed' },
+          null,
+          'old@test.com'
+        );
+
+        expect(getDocs).not.toHaveBeenCalled();
+        expect(firestoreModule.updateDoc).toHaveBeenCalledTimes(2);
+      });
+    });
 
     it('should search for a user and link userRef when member is unlinked and email is changing', async () => {
       const mockUserRef = { id: 'user-abc' };
-      vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
-        makeSnap([makeDocSnap('user-abc', {}, mockUserRef)]) as any
-      );
+      vi.spyOn(firestoreModule, 'getDocs')
+        // No other member has the address...
+        .mockResolvedValueOnce(makeSnap([]) as any)
+        // ...and one user does.
+        .mockResolvedValueOnce(
+          makeSnap([makeDocSnap('user-abc', {}, mockUserRef)]) as any
+        );
       vi.spyOn(firestoreModule, 'updateDoc').mockResolvedValueOnce(undefined);
 
       const changes: any = { email: 'new@test.com' };
@@ -393,12 +491,14 @@ describe('MemberService', () => {
     });
 
     it('should not set userRef and should log when multiple accounts share the email', async () => {
-      vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
-        makeSnap([
-          makeDocSnap('user-1', {}, { id: 'user-1' }),
-          makeDocSnap('user-2', {}, { id: 'user-2' }),
-        ]) as any
-      );
+      vi.spyOn(firestoreModule, 'getDocs')
+        .mockResolvedValueOnce(makeSnap([]) as any)
+        .mockResolvedValueOnce(
+          makeSnap([
+            makeDocSnap('user-1', {}, { id: 'user-1' }),
+            makeDocSnap('user-2', {}, { id: 'user-2' }),
+          ]) as any
+        );
       vi.spyOn(firestoreModule, 'updateDoc').mockResolvedValueOnce(undefined);
 
       const changes: any = { email: 'dup@test.com' };
@@ -418,7 +518,7 @@ describe('MemberService', () => {
       );
     });
 
-    it('should not search when member already has a userRef', async () => {
+    it('should not search for a user when member already has a userRef', async () => {
       const existingRef = { id: 'existing-user' } as any;
       vi.spyOn(firestoreModule, 'updateDoc').mockResolvedValueOnce(undefined);
 
@@ -430,7 +530,13 @@ describe('MemberService', () => {
         'old@test.com'
       );
 
-      expect(firestoreModule.getDocs).not.toHaveBeenCalled();
+      // Only the duplicate check queries; users is never searched.
+      expect(firestoreModule.getDocs).toHaveBeenCalledOnce();
+      expect(firestoreModule.collection).not.toHaveBeenCalledWith(
+        mockFs,
+        'users'
+      );
+      expect(changes.userRef).toBeUndefined();
     });
 
     it('should not search when email is not changing', async () => {
@@ -663,199 +769,129 @@ describe('MemberService', () => {
   });
 
   describe('updateAllMemberEmails', () => {
-    const mockUserRef = { id: 'user-1' } as any;
+    // M1/M2: the server writes (updateMemberEmails), so the client never
+    // queries or writes member docs here, nor names the address.
+    it('calls the updateMemberEmails callable with no address and returns its counts', async () => {
+      const callable = vi
+        .fn()
+        .mockResolvedValue({ data: { updated: 2, conflicts: 1 } });
+      const httpsCallable = vi
+        .spyOn(functionsModule, 'httpsCallable')
+        .mockReturnValue(callable as any);
+      const updateDoc = vi.spyOn(firestoreModule, 'updateDoc');
 
-    it('should update email on all member documents linked to the user', async () => {
-      const docs = [
-        makeDocSnap('m1', {}, { id: 'm1' }),
-        makeDocSnap('m2', {}, { id: 'm2' }),
-      ];
-      vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
-        makeSnap(docs) as any
+      const result = await service.updateAllMemberEmails();
+
+      expect(httpsCallable).toHaveBeenCalledWith(
+        mockFunctions,
+        'updateMemberEmails'
       );
-      vi.spyOn(firestoreModule, 'updateDoc').mockResolvedValue(undefined);
-
-      const count = await service.updateAllMemberEmails(
-        mockUserRef,
-        'new@test.com'
+      expect(callable).toHaveBeenCalledWith({});
+      expect(result).toEqual({ updated: 2, conflicts: 1 });
+      expect(updateDoc).not.toHaveBeenCalled();
+      expect(mockAnalytics.logEvent).toHaveBeenCalledWith(
+        'member_emails_updated',
+        { membersUpdated: 2, memberConflicts: 1 }
       );
-
-      expect(firestoreModule.updateDoc).toHaveBeenCalledTimes(2);
-      expect(count).toBe(2);
     });
 
-    describe('onlyFromEmail', () => {
-      const memberDocs = () => [
-        makeDocSnap('m1', { email: 'Old@Test.com' }, { id: 'm1' }),
-        makeDocSnap('m2', { email: 'work@corp.com' }, { id: 'm2' }),
-        makeDocSnap('m3', { email: 'old@test.com' }, { id: 'm3' }),
-      ];
-
-      it('writes only the records on that address, ignoring case, and counts them', async () => {
-        const docs = memberDocs();
-        vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
-          makeSnap(docs) as any
-        );
-        vi.spyOn(firestoreModule, 'updateDoc').mockResolvedValue(undefined);
-
-        const count = await service.updateAllMemberEmails(
-          mockUserRef,
-          'new@test.com',
-          'old@test.com'
-        );
-
-        expect(count).toBe(2);
-        expect(firestoreModule.updateDoc).toHaveBeenCalledTimes(2);
-        expect(firestoreModule.updateDoc).toHaveBeenCalledWith(docs[0]!.ref, {
-          email: 'new@test.com',
-        });
-        expect(firestoreModule.updateDoc).toHaveBeenCalledWith(docs[2]!.ref, {
-          email: 'new@test.com',
-        });
-        expect(firestoreModule.updateDoc).not.toHaveBeenCalledWith(
-          docs[1]!.ref,
-          expect.anything()
-        );
-      });
-
-      it('writes nothing when no record is on that address', async () => {
-        vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
-          makeSnap(memberDocs()) as any
-        );
-        vi.spyOn(firestoreModule, 'updateDoc').mockResolvedValue(undefined);
-
-        const count = await service.updateAllMemberEmails(
-          mockUserRef,
-          'new@test.com',
-          'nobody@test.com'
-        );
-
-        expect(count).toBe(0);
-        expect(firestoreModule.updateDoc).not.toHaveBeenCalled();
-      });
-
-      it('writes every record that is not already on the new address when the parameter is omitted', async () => {
-        const docs = [
-          ...memberDocs(),
-          makeDocSnap('m4', { email: 'New@Test.com' }, { id: 'm4' }),
-        ];
-        vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
-          makeSnap(docs) as any
-        );
-        vi.spyOn(firestoreModule, 'updateDoc').mockResolvedValue(undefined);
-
-        const count = await service.updateAllMemberEmails(
-          mockUserRef,
-          'new@test.com'
-        );
-
-        // I2: the one already on the new address (any case) is neither
-        // written nor counted.
-        expect(count).toBe(3);
-        expect(firestoreModule.updateDoc).toHaveBeenCalledTimes(3);
-        expect(firestoreModule.updateDoc).not.toHaveBeenCalledWith(
-          docs[3]!.ref,
-          expect.anything()
-        );
-      });
-
-      it('returns 0 when every record is already on the new address', async () => {
-        vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
-          makeSnap([
-            makeDocSnap('m1', { email: 'new@test.com' }, { id: 'm1' }),
-          ]) as any
-        );
-        vi.spyOn(firestoreModule, 'updateDoc').mockResolvedValue(undefined);
-
-        expect(
-          await service.updateAllMemberEmails(mockUserRef, 'NEW@test.com')
-        ).toBe(0);
-        expect(firestoreModule.updateDoc).not.toHaveBeenCalled();
-      });
-
-      it('skips records already on the new address with onlyFromEmail too', async () => {
-        vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
-          makeSnap([
-            makeDocSnap('m1', { email: 'old@test.com' }, { id: 'm1' }),
-          ]) as any
-        );
-        vi.spyOn(firestoreModule, 'updateDoc').mockResolvedValue(undefined);
-
-        // The old and the new address are the same one (a case-only change).
-        expect(
-          await service.updateAllMemberEmails(
-            mockUserRef,
-            'OLD@test.com',
-            'old@test.com'
-          )
-        ).toBe(0);
-      });
-    });
-
-    describe('partial failure (M2)', () => {
-      const threeDocs = () => [
-        makeDocSnap('m1', { email: 'a@test.com' }, { id: 'm1' }),
-        makeDocSnap('m2', { email: 'a@test.com' }, { id: 'm2' }),
-        makeDocSnap('m3', { email: 'a@test.com' }, { id: 'm3' }),
-      ];
-
-      it('reports how many were written before the failure', async () => {
-        vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
-          makeSnap(threeDocs()) as any
-        );
-        vi.spyOn(firestoreModule, 'updateDoc')
-          .mockResolvedValueOnce(undefined)
-          .mockRejectedValueOnce(new Error('offline'));
-
-        const failure = await service
-          .updateAllMemberEmails(mockUserRef, 'new@test.com')
-          .catch((e: unknown) => e);
-
-        expect(failure).toBeInstanceOf(MemberEmailUpdateError);
-        expect((failure as MemberEmailUpdateError).updated).toBe(1);
-        expect((failure as Error).message).toBe('offline');
-        expect(mockAnalytics.logError).toHaveBeenCalledWith(
-          'Member Service',
-          'updateAllMemberEmails',
-          'Failed to update member emails',
-          'offline'
-        );
-      });
-
-      it('rethrows the original error when nothing was written', async () => {
-        vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
-          makeSnap(threeDocs()) as any
-        );
-        const boom = new Error('permission-denied');
-        vi.spyOn(firestoreModule, 'updateDoc').mockRejectedValueOnce(boom);
-
-        await expect(
-          service.updateAllMemberEmails(mockUserRef, 'new@test.com')
-        ).rejects.toBe(boom);
-      });
-    });
-
-    it('should return 0 when no members are linked to the user', async () => {
-      vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
-        makeSnap([]) as any
+    it('passes onlyFromEmail through', async () => {
+      const callable = vi
+        .fn()
+        .mockResolvedValue({ data: { updated: 1, conflicts: 0 } });
+      vi.spyOn(functionsModule, 'httpsCallable').mockReturnValue(
+        callable as any
       );
 
-      const count = await service.updateAllMemberEmails(
-        mockUserRef,
-        'new@test.com'
-      );
+      await service.updateAllMemberEmails('Old@Test.com');
 
-      expect(count).toBe(0);
+      expect(callable).toHaveBeenCalledWith({ onlyFromEmail: 'Old@Test.com' });
     });
 
-    it('should rethrow errors', async () => {
-      vi.spyOn(firestoreModule, 'getDocs').mockRejectedValueOnce(
-        new Error('Firestore error')
+    it('rethrows the unverified-login refusal without logging it', async () => {
+      const error = Object.assign(
+        new Error('Verify your login email first. [403]'),
+        { code: 'functions/permission-denied' }
+      );
+      vi.spyOn(functionsModule, 'httpsCallable').mockReturnValue(
+        vi.fn().mockRejectedValue(error) as any
       );
 
-      await expect(
-        service.updateAllMemberEmails(mockUserRef, 'new@test.com')
-      ).rejects.toThrow('Firestore error');
+      await expect(service.updateAllMemberEmails()).rejects.toBe(error);
+      expect(mockAnalytics.logError).not.toHaveBeenCalled();
+    });
+
+    // The server logs a failed Auth lookup itself; here it is an outcome.
+    it('rethrows the failed-account-check error without logging it', async () => {
+      const error = authLookupUnavailable();
+      vi.spyOn(functionsModule, 'httpsCallable').mockReturnValue(
+        vi.fn().mockRejectedValue(error) as any
+      );
+
+      await expect(service.updateAllMemberEmails()).rejects.toBe(error);
+      expect(mockAnalytics.logError).not.toHaveBeenCalled();
+    });
+
+    // A legacy login address the server can't write.
+    // The owner should hear about it, so it is logged.
+    it('logs and rethrows the invalid-login-email refusal', async () => {
+      const error = Object.assign(
+        new Error(
+          'Your login email is not a single valid email address. [400]'
+        ),
+        { code: 'functions/failed-precondition' }
+      );
+      vi.spyOn(functionsModule, 'httpsCallable').mockReturnValue(
+        vi.fn().mockRejectedValue(error) as any
+      );
+
+      await expect(service.updateAllMemberEmails()).rejects.toBe(error);
+      expect(mockAnalytics.logError).toHaveBeenCalledWith(
+        'Member Service',
+        'updateAllMemberEmails',
+        'Failed to update member emails',
+        'Your login email is not a single valid email address.'
+      );
+    });
+
+    it('logs and rethrows an unexpected failure', async () => {
+      vi.spyOn(functionsModule, 'httpsCallable').mockReturnValue(
+        vi
+          .fn()
+          .mockRejectedValue(
+            Object.assign(new Error('boom'), { code: 'functions/internal' })
+          ) as any
+      );
+
+      await expect(service.updateAllMemberEmails()).rejects.toThrow('boom');
+      expect(mockAnalytics.logError).toHaveBeenCalledWith(
+        'Member Service',
+        'updateAllMemberEmails',
+        'Failed to update member emails',
+        'boom'
+      );
+    });
+  });
+
+  describe('memberEmailUpdateMessage', () => {
+    it.each([
+      [{ updated: 0, conflicts: 0 }, 'No member records needed updating'],
+      [{ updated: 1, conflicts: 0 }, 'Updated email on 1 member record'],
+      [{ updated: 3, conflicts: 0 }, 'Updated email on 3 member records'],
+      [
+        { updated: 2, conflicts: 1 },
+        'Updated email on 2 member records. 1 skipped because another member of that group already uses that address.',
+      ],
+      [
+        { updated: 1, conflicts: 2 },
+        'Updated email on 1 member record. 2 skipped because another member of each of those groups already uses that address.',
+      ],
+      [
+        { updated: 0, conflicts: 1 },
+        'No member records were updated. 1 skipped because another member of that group already uses that address.',
+      ],
+    ])('%o reads "%s"', (result, message) => {
+      expect(memberEmailUpdateMessage(result)).toBe(message);
     });
   });
 
@@ -900,7 +936,9 @@ describe('MemberService', () => {
   // verified sign-in address.
   describe('requestMemberEmailChange', () => {
     it('calls the requestMemberEmailChange callable and returns its status', async () => {
-      const callable = vi.fn().mockResolvedValue({ data: { status: 'pending' } });
+      const callable = vi
+        .fn()
+        .mockResolvedValue({ data: { status: 'pending' } });
       const httpsCallable = vi
         .spyOn(functionsModule, 'httpsCallable')
         .mockReturnValue(callable as any);
@@ -932,11 +970,42 @@ describe('MemberService', () => {
         );
 
         await expect(
-          service.requestMemberEmailChange('group-1', 'member-1', 'a@example.com')
+          service.requestMemberEmailChange(
+            'group-1',
+            'member-1',
+            'a@example.com'
+          )
         ).rejects.toBe(error);
         expect(mockAnalytics.logError).not.toHaveBeenCalled();
       }
     );
+
+    it('rethrows the failed-account-check error without logging it', async () => {
+      const error = authLookupUnavailable();
+      vi.spyOn(functionsModule, 'httpsCallable').mockReturnValue(
+        vi.fn().mockRejectedValue(error) as any
+      );
+
+      await expect(
+        service.requestMemberEmailChange('group-1', 'member-1', 'a@example.com')
+      ).rejects.toBe(error);
+      expect(mockAnalytics.logError).not.toHaveBeenCalled();
+    });
+
+    it('logs any other unavailable error', async () => {
+      vi.spyOn(functionsModule, 'httpsCallable').mockReturnValue(
+        vi.fn().mockRejectedValue(
+          Object.assign(new Error('unavailable'), {
+            code: 'functions/unavailable',
+          })
+        ) as any
+      );
+
+      await expect(
+        service.requestMemberEmailChange('group-1', 'member-1', 'a@example.com')
+      ).rejects.toThrow('unavailable');
+      expect(mockAnalytics.logError).toHaveBeenCalledOnce();
+    });
 
     it('logs and rethrows an unexpected failure', async () => {
       vi.spyOn(functionsModule, 'httpsCallable').mockReturnValue(
@@ -986,9 +1055,17 @@ describe('MemberService', () => {
         vi.fn().mockRejectedValue(error) as any
       );
 
-      await expect(service.confirmMemberEmailChange('tok')).rejects.toBe(
-        error
+      await expect(service.confirmMemberEmailChange('tok')).rejects.toBe(error);
+      expect(mockAnalytics.logError).not.toHaveBeenCalled();
+    });
+
+    it('rethrows the failed-account-check error without logging it', async () => {
+      const error = authLookupUnavailable();
+      vi.spyOn(functionsModule, 'httpsCallable').mockReturnValue(
+        vi.fn().mockRejectedValue(error) as any
       );
+
+      await expect(service.confirmMemberEmailChange('tok')).rejects.toBe(error);
       expect(mockAnalytics.logError).not.toHaveBeenCalled();
     });
 

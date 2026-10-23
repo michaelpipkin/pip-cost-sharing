@@ -109,4 +109,56 @@ describe('CustomDateAdapter', () => {
     expect(ymd(adapter.parse('2/29/24'))).toEqual([2024, 2, 29]);
     expect(adapter.isValid(adapter.parse('2/29/25') as Date)).toBe(false);
   });
+
+  // An ISO date (yyyy-MM-dd, e.g. pasted from a spreadsheet) is that day,
+  // in local time. Date.parse reads a date-only ISO string as UTC midnight,
+  // which is the day before anywhere west of UTC. Each case runs under its
+  // own time zone, so the test fails for that bug whatever the machine's
+  // zone is (Node applies a changed TZ at once).
+  describe.each([
+    'America/Los_Angeles',
+    'America/New_York',
+    'Pacific/Honolulu',
+    'UTC',
+    'Asia/Tokyo',
+  ])('an ISO date in %s', (zone) => {
+    let savedTz: string | undefined;
+
+    beforeEach(() => {
+      savedTz = process.env['TZ'];
+      process.env['TZ'] = zone;
+    });
+
+    afterEach(() => {
+      if (savedTz === undefined) delete process.env['TZ'];
+      else process.env['TZ'] = savedTz;
+    });
+
+    it('should be that local day, at local midnight', () => {
+      const result = adapter.parse('2025-01-05');
+      expect(ymd(result)).toEqual([2025, 1, 5]);
+      expect(result!.getHours()).toBe(0);
+      expect(result!.getMinutes()).toBe(0);
+    });
+
+    it('should accept surrounding spaces and one-digit months and days', () => {
+      expect(ymd(adapter.parse(' 2025-12-31 '))).toEqual([2025, 12, 31]);
+      expect(ymd(adapter.parse('2025-1-5'))).toEqual([2025, 1, 5]);
+    });
+
+    it('should return an invalid date, not roll over, for an impossible ISO date', () => {
+      expect(adapter.isValid(adapter.parse('2025-02-30') as Date)).toBe(false);
+      expect(adapter.isValid(adapter.parse('2025-13-01') as Date)).toBe(false);
+      expect(ymd(adapter.parse('2024-02-29'))).toEqual([2024, 2, 29]);
+    });
+
+    it('should still parse the formats it handed to the native parser', () => {
+      // An ISO date and time is local time already.
+      expect(ymd(adapter.parse('2025-01-05T00:30:00'))).toEqual([2025, 1, 5]);
+      expect(ymd(adapter.parse('Jan 5, 2025'))).toEqual([2025, 1, 5]);
+      expect(ymd(adapter.parse('3/17/2025'))).toEqual([2025, 3, 17]);
+      const fromNumber = adapter.parse(new Date(2025, 0, 5).getTime());
+      expect(ymd(fromNumber)).toEqual([2025, 1, 5]);
+    });
+  });
 });

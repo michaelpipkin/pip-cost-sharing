@@ -17,6 +17,7 @@ import { MemberStore } from '@store/member.store';
 import { MemorizedStore } from '@store/memorized.store';
 import { SplitStore } from '@store/split.store';
 import { UserStore } from '@store/user.store';
+import { isGroupMailLimitRefusal } from '@utils/callable-error.util';
 import { toIsoFormat } from '@utils/date-utils';
 import { isSingleEmailAddress } from '@utils/email-validation';
 import { FirebaseError } from 'firebase/app';
@@ -39,7 +40,11 @@ import {
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { appCheckTokenReady } from '../app-check';
 import { GroupService } from './group.service';
-import { IUserService, PaymentRequestResult } from './user.service.interface';
+import {
+  GroupEmailOutcome,
+  IUserService,
+  PaymentRequestResult,
+} from './user.service.interface';
 
 // Total attempts (initial + retries) for the login-time Firestore sequence
 // below, and the fixed delay between them - short, bounded, and only ever
@@ -76,6 +81,34 @@ function inBatches<T>(items: T[]): T[][] {
     batches.push(items.slice(i, i + GROUP_EMAIL_BATCH));
   }
   return batches;
+}
+
+/**
+ * Sends `items` in batches, ONE AFTER ANOTHER, and returns each batch's
+ * result in order. Each call is all-or-nothing on the server, but the
+ * user's action is several calls; sending them in turn makes what went out
+ * before a refusal a known prefix (in parallel, any subset could commit).
+ * When a batch after the first is refused by the caller's daily group-mail
+ * limit (functions/src/mail-allowance.ts), the rest are not tried and
+ * `limitReached` is set; any other failure, or a refusal of the first
+ * batch, is thrown.
+ */
+async function sendInTurn<T, R>(
+  items: T[],
+  send: (batch: T[]) => Promise<R>
+): Promise<{ results: R[]; limitReached: boolean }> {
+  const results: R[] = [];
+  for (const batch of inBatches(items)) {
+    try {
+      results.push(await send(batch));
+    } catch (error) {
+      if (results.length > 0 && isGroupMailLimitRefusal(error)) {
+        return { results, limitReached: true };
+      }
+      throw error;
+    }
+  }
+  return { results, limitReached: false };
 }
 
 /** The sign-in address once verified, else '' (see #syncProfileEmail). */
@@ -153,10 +186,9 @@ export class UserService implements IUserService {
   // transient network condition (Firestore's docs describe 'unavailable'
   // specifically as "most likely...corrected by retrying with a backoff")
   // - a dropped signal or a WiFi/cellular handoff lasting a few seconds,
-  // nothing to do with App Check. 'permission-denied' (an App Check
-  // rejection) is deliberately excluded - the SDK's own ~24h throttle
-  // means an immediate retry cannot possibly help, so retrying it would
-  // only delay showing the message the user actually needs to see.
+  // nothing to do with App Check. 'permission-denied' is deliberately
+  // excluded - a rules denial doesn't change on an immediate retry, so
+  // retrying it would only delay showing the message the user needs to see.
   private isTransientFirestoreError(error: unknown): boolean {
     return (
       error instanceof FirebaseError &&
@@ -171,11 +203,9 @@ export class UserService implements IUserService {
   // When initializeAuth() throws, GroupService.getUserGroups() never runs,
   // so nothing would otherwise clear the loading overlay or explain why
   // the app looks stuck - the user is left staring at a spinner with no
-  // way out. A `permission-denied` here (reading/writing their own user
-  // doc, which security rules always allow the owner) almost always means
-  // App Check rejected this device's requests rather than a real rules
-  // violation - the account itself is fine, Firebase Auth succeeded, only
-  // this specific client can't currently reach Firestore.
+  // way out. A callable refused by App Check gets the App Check help
+  // dialog; anything else (Firestore isn't App Check enforced) gets the
+  // retry message.
   private handleInitializeAuthFailure(error: unknown): void {
     this.loading.loadingOff();
     this.appCheckErrorHandler.handle(
@@ -696,19 +726,13 @@ export class UserService implements IUserService {
       owedToMemberRef: DocumentReference<Member>;
       amount: number;
     }[]
-  ): Promise<{ sent: number; skipped: number }> {
-    if (transfers.length === 0) {
-      return { sent: 0, skipped: 0 };
-    }
-    const results = (
-      await Promise.all(
-        inBatches(transfers).map((batch) =>
-          this.#callSendPaymentRequests(groupId, batch)
-        )
-      )
-    ).flat();
-    const sent = results.filter((r) => r === 'sent').length;
-    return { sent, skipped: results.length - sent };
+  ): Promise<GroupEmailOutcome & { skipped: number }> {
+    const { results, limitReached } = await sendInTurn(transfers, (batch) =>
+      this.#callSendPaymentRequests(groupId, batch)
+    );
+    const all = results.flat();
+    const sent = all.filter((r) => r === 'sent').length;
+    return { sent, skipped: all.length - sent, limitReached };
   }
 
   async sendMemberPaymentUnpayEmails(
@@ -741,23 +765,26 @@ export class UserService implements IUserService {
     groupId: string,
     memberRefs: DocumentReference<Member>[],
     settleDate: Date
-  ): Promise<void> {
+  ): Promise<GroupEmailOutcome> {
     if (memberRefs.length === 0) {
-      return;
+      return { sent: 0, limitReached: false };
     }
     const fn = httpsCallable<
       { groupId: string; memberIds: string[]; settleDate: string },
       { sent: number }
     >(this.functions, 'sendSettleReversalEmails');
-    await Promise.all(
-      inBatches(memberRefs).map((batch) =>
-        fn({
-          groupId,
-          memberIds: batch.map((ref) => ref.id),
-          settleDate: toIsoFormat(settleDate),
-        })
-      )
+    const { results, limitReached } = await sendInTurn(
+      memberRefs,
+      async (batch) =>
+        (
+          await fn({
+            groupId,
+            memberIds: batch.map((ref) => ref.id),
+            settleDate: toIsoFormat(settleDate),
+          })
+        ).data.sent
     );
+    return { sent: results.reduce((a, b) => a + b, 0), limitReached };
   }
 
   async logout(redirect: boolean = true): Promise<void> {

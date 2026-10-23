@@ -3,7 +3,10 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
-import { MemberService } from '@services/member.service';
+import {
+  DuplicateMemberEmailError,
+  MemberService,
+} from '@services/member.service';
 import {
   createMockAnalyticsService,
   createMockDialogRef,
@@ -21,12 +24,16 @@ describe('AddMemberComponent', () => {
   let el: HTMLElement;
   let mockDialogRef: ReturnType<typeof createMockDialogRef>;
   let mockMemberService: { addMemberToGroup: ReturnType<typeof vi.fn> };
+  let mockSnackBar: ReturnType<typeof createMockSnackBar>;
+  let mockAnalytics: ReturnType<typeof createMockAnalyticsService>;
 
   beforeEach(async () => {
     mockDialogRef = createMockDialogRef();
     mockMemberService = {
       addMemberToGroup: vi.fn().mockResolvedValue(undefined),
     };
+    mockSnackBar = createMockSnackBar();
+    mockAnalytics = createMockAnalyticsService();
 
     await TestBed.configureTestingModule({
       imports: [AddMemberComponent],
@@ -36,10 +43,10 @@ describe('AddMemberComponent', () => {
           useValue: { groupId: mockDocRef('groups/group-1') },
         },
         { provide: MatDialogRef, useValue: mockDialogRef },
-        { provide: MatSnackBar, useValue: createMockSnackBar() },
+        { provide: MatSnackBar, useValue: mockSnackBar },
         { provide: LoadingService, useValue: createMockLoadingService() },
         { provide: MemberService, useValue: mockMemberService },
-        { provide: AnalyticsService, useValue: createMockAnalyticsService() },
+        { provide: AnalyticsService, useValue: mockAnalytics },
       ],
     }).compileComponents();
 
@@ -158,6 +165,43 @@ describe('AddMemberComponent', () => {
     it('should close the dialog with true on success', async () => {
       await component.onSubmit();
       expect(mockDialogRef.close).toHaveBeenCalledWith(true);
+    });
+
+    // An address another member already has is an outcome for the admin,
+    // not an app error: shown, not logged, dialog left open.
+    it('should show the duplicate-address refusal without logging it', async () => {
+      mockMemberService.addMemberToGroup.mockRejectedValue(
+        new DuplicateMemberEmailError()
+      );
+
+      await component.onSubmit();
+
+      expect(mockSnackBar.openFromComponent).toHaveBeenCalledWith(
+        expect.anything(),
+        {
+          data: {
+            message: 'Another member of this group already uses that address.',
+          },
+        }
+      );
+      expect(mockAnalytics.logError).not.toHaveBeenCalled();
+      expect(mockDialogRef.close).not.toHaveBeenCalled();
+    });
+
+    it('should log any other failure', async () => {
+      mockMemberService.addMemberToGroup.mockRejectedValue(new Error('boom'));
+
+      await component.onSubmit();
+
+      expect(mockSnackBar.openFromComponent).toHaveBeenCalledWith(
+        expect.anything(),
+        { data: { message: 'boom' } }
+      );
+      expect(mockAnalytics.logError).toHaveBeenCalledWith(
+        'Add Member Component',
+        'add_member',
+        'boom'
+      );
     });
   });
 
