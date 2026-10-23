@@ -174,6 +174,12 @@ describe('buildPaymentMethodLines', () => {
     );
   });
 
+  it('strips a leading $ from cashAppId, so a stored "$jane123" is not shown as "$$jane123"', () => {
+    expect(buildPaymentMethodLines({ cashAppId: '$jane123' })).toBe(
+      'Cash App: $jane123'
+    );
+  });
+
   it('only includes the methods that are actually set', () => {
     expect(buildPaymentMethodLines({ zelleId: 'jane@example.com' })).toBe(
       'Zelle: jane@example.com'
