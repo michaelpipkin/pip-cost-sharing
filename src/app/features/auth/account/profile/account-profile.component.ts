@@ -33,6 +33,8 @@ import {
 import { UserService } from '@services/user.service';
 import { UserStore } from '@store/user.store';
 import {
+  AUTH_LOOKUP_UNAVAILABLE,
+  isAuthLookupUnavailable,
   isInvalidLoginEmailRefusal,
   isUnverifiedLoginRefusal,
   LOGIN_EMAIL_INVALID_MESSAGE,
@@ -219,6 +221,8 @@ export class AccountProfileComponent {
         message = VERIFY_LOGIN_EMAIL;
       } else if (isInvalidLoginEmailRefusal(error)) {
         message = LOGIN_EMAIL_INVALID_MESSAGE;
+      } else if (isAuthLookupUnavailable(error)) {
+        message = AUTH_LOOKUP_UNAVAILABLE;
       }
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
         data: { message },

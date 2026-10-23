@@ -22,6 +22,7 @@ type ErrorOutcome =
   | 'wrong-account'
   | 'unverified'
   | 'inactive'
+  | 'unavailable'
   | 'failed';
 type Outcome = 'confirming' | 'confirmed' | ErrorOutcome;
 
@@ -35,6 +36,8 @@ const ERROR_MESSAGES: Record<ErrorOutcome, string> = {
   unverified: 'Verify your login email first.',
   inactive:
     "You're no longer an active member of this group, so the change can't be applied.",
+  unavailable:
+    "Couldn't check your account right now. Please try the link again.",
   failed:
     'Something went wrong - your group email could not be confirmed. Please try the link again.',
 };
@@ -57,6 +60,9 @@ const SERVER_OUTCOMES: Record<string, ErrorOutcome> = {
   'functions/permission-denied|Verify your login email first.': 'unverified',
   'functions/permission-denied|User must be an active member of the group':
     'inactive',
+  // The Auth lookup failed (an outage); the link is still unused.
+  "functions/unavailable|Couldn't check your account right now. Please try again.":
+    'unavailable',
 };
 
 /**

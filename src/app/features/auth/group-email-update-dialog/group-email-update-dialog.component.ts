@@ -20,6 +20,8 @@ import {
 } from '@services/member.service';
 import { UserStore } from '@store/user.store';
 import {
+  AUTH_LOOKUP_UNAVAILABLE,
+  isAuthLookupUnavailable,
   isInvalidLoginEmailRefusal,
   isUnverifiedLoginRefusal,
   LOGIN_EMAIL_INVALID_MESSAGE,
@@ -120,6 +122,10 @@ export class GroupEmailUpdateDialogComponent {
         this.#notify(VERIFY_LOGIN_EMAIL);
       } else if (isInvalidLoginEmailRefusal(error)) {
         this.#notify(LOGIN_EMAIL_INVALID_MESSAGE);
+      } else if (isAuthLookupUnavailable(error)) {
+        // An Auth outage on the server: the same choice can be retried.
+        finished = false;
+        this.#notify(AUTH_LOOKUP_UNAVAILABLE);
       } else {
         // MemberService logs unexpected failures.
         finished = false;

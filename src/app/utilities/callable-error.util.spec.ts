@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  AUTH_LOOKUP_UNAVAILABLE,
   callableError,
   CONFIRMATION_RECENTLY_SENT,
   GROUP_MAIL_LIMIT_EXCEEDED,
   GROUP_MAIL_LIMIT_REACHED,
+  isAuthLookupUnavailable,
   isConfirmationCooldownRefusal,
   isGroupMailLimitRefusal,
   isInvalidLoginEmailRefusal,
@@ -73,6 +75,34 @@ describe('isUnverifiedLoginRefusal', () => {
       )
     ).toBe(false);
     expect(isUnverifiedLoginRefusal('nope')).toBe(false);
+  });
+});
+
+describe('isAuthLookupUnavailable', () => {
+  const refusal = (code: string, message: string) =>
+    Object.assign(new Error(message), { code });
+
+  it('matches the member-email callables’ failed Auth lookup', () => {
+    expect(AUTH_LOOKUP_UNAVAILABLE).toBe(
+      "Couldn't check your account right now. Please try again."
+    );
+    expect(
+      isAuthLookupUnavailable(
+        refusal('functions/unavailable', `${AUTH_LOOKUP_UNAVAILABLE} [503]`)
+      )
+    ).toBe(true);
+  });
+
+  it('does not match another unavailable error or the same text under another code', () => {
+    expect(
+      isAuthLookupUnavailable(refusal('functions/unavailable', 'unavailable'))
+    ).toBe(false);
+    expect(
+      isAuthLookupUnavailable(
+        refusal('functions/internal', AUTH_LOOKUP_UNAVAILABLE)
+      )
+    ).toBe(false);
+    expect(isAuthLookupUnavailable(null)).toBe(false);
   });
 });
 

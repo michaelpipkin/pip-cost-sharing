@@ -6,6 +6,7 @@ import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
 import {
   callableError,
+  isAuthLookupUnavailable,
   isUnverifiedLoginRefusal,
 } from '@utils/callable-error.util';
 import {
@@ -46,7 +47,9 @@ const GROUP_MEMBERS_SYNC_TIMEOUT_MS = 2000;
  * Callable error codes that are outcomes the UI reports to the user, not
  * failures to log: the daily request limit and a duplicate address
  * (requestMemberEmailChange), an expired/used link or another account
- * (confirmMemberEmailChange), and an unverified login email (both).
+ * (confirmMemberEmailChange), and an unverified login email (both). A failed
+ * Auth lookup (unavailable, AUTH_LOOKUP_UNAVAILABLE) is not logged either,
+ * matched by its message: the server logs it.
  */
 const EXPECTED_EMAIL_CHANGE_CODES = new Set([
   'functions/resource-exhausted',
@@ -477,7 +480,11 @@ export class MemberService implements IMemberService {
 
   #logUnexpected(error: unknown, action: string, message: string): void {
     const code = (error as { code?: unknown } | null)?.code;
-    if (typeof code === 'string' && EXPECTED_EMAIL_CHANGE_CODES.has(code)) {
+    if (
+      (typeof code === 'string' && EXPECTED_EMAIL_CHANGE_CODES.has(code)) ||
+      // The server logs its own failed Auth lookup.
+      isAuthLookupUnavailable(error)
+    ) {
       return;
     }
     this.analytics.logError(
@@ -545,10 +552,11 @@ export class MemberService implements IMemberService {
       });
       return data;
     } catch (error) {
-      // Only the unverified-login refusal is an expected outcome here. The
-      // rest, LOGIN_EMAIL_INVALID (a legacy account the owner should hear
-      // about) included, are logged with the server's message.
-      if (!isUnverifiedLoginRefusal(error)) {
+      // Only the unverified-login refusal and the failed Auth lookup (which
+      // the server logs) are expected outcomes here. The rest,
+      // LOGIN_EMAIL_INVALID (a legacy account the owner should hear about)
+      // included, are logged with the server's message.
+      if (!isUnverifiedLoginRefusal(error) && !isAuthLookupUnavailable(error)) {
         this.analytics.logError(
           'Member Service',
           'updateAllMemberEmails',

@@ -40,8 +40,10 @@ import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
 import {
+  AUTH_LOOKUP_UNAVAILABLE,
   callableError,
   CONFIRMATION_RECENTLY_SENT,
+  isAuthLookupUnavailable,
   isConfirmationCooldownRefusal,
   isUnverifiedLoginRefusal,
   VERIFY_LOGIN_EMAIL,
@@ -206,6 +208,9 @@ export class EditMemberComponent {
       message = 'Too many email change requests. Please try again tomorrow.';
     } else if (isUnverifiedLoginRefusal(error)) {
       message = VERIFY_LOGIN_EMAIL;
+    } else if (isAuthLookupUnavailable(error)) {
+      // An Auth outage on the server (which logs it); saving again can work.
+      message = AUTH_LOOKUP_UNAVAILABLE;
     } else if (error instanceof Error) {
       message = serverMessage;
       if (!code || !EXPECTED_CALLABLE_CODES.has(code)) {

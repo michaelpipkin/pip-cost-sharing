@@ -31,6 +31,21 @@ export function isUnverifiedLoginRefusal(error: unknown): boolean {
 }
 
 /**
+ * The member-email callables' answer when the Auth lookup behind
+ * VERIFY_LOGIN_EMAIL failed (functions/src/member-email.ts
+ * AUTH_LOOKUP_UNAVAILABLE): an outage, so the remedy is to try again. Shown
+ * as is; the server has already logged it.
+ */
+export const AUTH_LOOKUP_UNAVAILABLE =
+  "Couldn't check your account right now. Please try again.";
+
+/** Whether `error` is that answer (unavailable, AUTH_LOOKUP_UNAVAILABLE). */
+export function isAuthLookupUnavailable(error: unknown): boolean {
+  const { code, message } = callableError(error);
+  return code === 'functions/unavailable' && message === AUTH_LOOKUP_UNAVAILABLE;
+}
+
+/**
  * updateMemberEmails' refusal of a verified login email that is not one
  * valid address (functions/src/member-email.ts LOGIN_EMAIL_INVALID): a legacy
  * account. Retrying can't help.

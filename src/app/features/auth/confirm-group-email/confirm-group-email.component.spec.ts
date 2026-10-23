@@ -167,6 +167,12 @@ describe('ConfirmGroupEmailComponent', () => {
       'User must be an active member of the group',
       "You're no longer an active member of this group, so the change can't be applied.",
     ],
+    // T3: an Auth outage leaves the link unused, so it can be tried again.
+    [
+      'unavailable',
+      "Couldn't check your account right now. Please try again.",
+      "Couldn't check your account right now. Please try the link again.",
+    ],
   ])('maps %s "%s"', async (code, message, shown) => {
     await createComponent({ token: 'tok-1' }, async () => {
       throw callableError(code, message);

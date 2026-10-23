@@ -20,6 +20,14 @@ function makeDocSnap(id: string, data: any, ref?: any) {
   return { id, data: () => data, ref: ref ?? { id } };
 }
 
+/** The member-email callables' failed Auth lookup, as the SDK throws it. */
+function authLookupUnavailable(): Error {
+  return Object.assign(
+    new Error("Couldn't check your account right now. Please try again. [503]"),
+    { code: 'functions/unavailable' }
+  );
+}
+
 describe('MemberService', () => {
   let service: MemberService;
 
@@ -715,6 +723,17 @@ describe('MemberService', () => {
       expect(mockAnalytics.logError).not.toHaveBeenCalled();
     });
 
+    // T3: the server logs a failed Auth lookup itself; here it is an outcome.
+    it('rethrows the failed-account-check error without logging it', async () => {
+      const error = authLookupUnavailable();
+      vi.spyOn(functionsModule, 'httpsCallable').mockReturnValue(
+        vi.fn().mockRejectedValue(error) as any
+      );
+
+      await expect(service.updateAllMemberEmails()).rejects.toBe(error);
+      expect(mockAnalytics.logError).not.toHaveBeenCalled();
+    });
+
     // Fix round 1, Minor 1: a legacy login address the server can't write.
     // The owner should hear about it, so it is logged.
     it('logs and rethrows the invalid-login-email refusal', async () => {
@@ -857,6 +876,35 @@ describe('MemberService', () => {
       }
     );
 
+    it('rethrows the failed-account-check error without logging it', async () => {
+      const error = authLookupUnavailable();
+      vi.spyOn(functionsModule, 'httpsCallable').mockReturnValue(
+        vi.fn().mockRejectedValue(error) as any
+      );
+
+      await expect(
+        service.requestMemberEmailChange('group-1', 'member-1', 'a@example.com')
+      ).rejects.toBe(error);
+      expect(mockAnalytics.logError).not.toHaveBeenCalled();
+    });
+
+    it('logs any other unavailable error', async () => {
+      vi.spyOn(functionsModule, 'httpsCallable').mockReturnValue(
+        vi
+          .fn()
+          .mockRejectedValue(
+            Object.assign(new Error('unavailable'), {
+              code: 'functions/unavailable',
+            })
+          ) as any
+      );
+
+      await expect(
+        service.requestMemberEmailChange('group-1', 'member-1', 'a@example.com')
+      ).rejects.toThrow('unavailable');
+      expect(mockAnalytics.logError).toHaveBeenCalledOnce();
+    });
+
     it('logs and rethrows an unexpected failure', async () => {
       vi.spyOn(functionsModule, 'httpsCallable').mockReturnValue(
         vi
@@ -901,6 +949,18 @@ describe('MemberService', () => {
       const error = Object.assign(new Error('expired'), {
         code: 'functions/failed-precondition',
       });
+      vi.spyOn(functionsModule, 'httpsCallable').mockReturnValue(
+        vi.fn().mockRejectedValue(error) as any
+      );
+
+      await expect(service.confirmMemberEmailChange('tok')).rejects.toBe(
+        error
+      );
+      expect(mockAnalytics.logError).not.toHaveBeenCalled();
+    });
+
+    it('rethrows the failed-account-check error without logging it', async () => {
+      const error = authLookupUnavailable();
       vi.spyOn(functionsModule, 'httpsCallable').mockReturnValue(
         vi.fn().mockRejectedValue(error) as any
       );

@@ -16,6 +16,7 @@ import {
   updateMemberEmails,
 } from './index';
 import {
+  AUTH_LOOKUP_UNAVAILABLE,
   CONFIRM_LINK_INVALID,
   CONFIRM_MEMBER_UNLINKED,
   CONFIRMATION_RECENTLY_SENT,
@@ -109,6 +110,22 @@ async function mailedToken(to: string): Promise<string> {
   );
   expect(match).not.toBeNull();
   return decodeURIComponent(match![1]!);
+}
+
+/**
+ * Makes the next Auth getUser call fail as an outage would (not with
+ * auth/user-not-found), and silences the error the callable logs for it.
+ * Returns the undo.
+ */
+function failAuthLookupOnce(): () => void {
+  const lookup = vi
+    .spyOn(getAuth(), 'getUser')
+    .mockRejectedValueOnce(new Error('auth backend unreachable'));
+  const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  return () => {
+    lookup.mockRestore();
+    log.mockRestore();
+  };
 }
 
 const sha256 = (value: string) =>
@@ -220,6 +237,28 @@ describe('requestMemberEmailChange', () => {
     expect(await memberEmail(unverified.memberRef)).toMatchObject({
       email: unverified.memberEmail,
     });
+  });
+
+  // T3: a failed Auth lookup is an outage, not an unverified login email,
+  // so it gets a retryable code and the user is not told to verify.
+  it('answers unavailable, mailing nothing, when the Auth lookup fails', async () => {
+    const s = await seedLinkedMember();
+    const newEmail = uniqueEmail('new');
+    const restore = failAuthLookupOnce();
+    try {
+      await expect(request(s, newEmail)).rejects.toMatchObject({
+        code: 'unavailable',
+        message: AUTH_LOOKUP_UNAVAILABLE,
+      });
+    } finally {
+      restore();
+    }
+    expect(await mailTo(newEmail)).toHaveLength(0);
+    expect(await memberEmail(s.memberRef)).toMatchObject({
+      email: s.memberEmail,
+    });
+    // The same request goes through once the lookup works again.
+    await expect(request(s, newEmail)).resolves.toEqual({ status: 'pending' });
   });
 
   // M2: someone who left the group can't use it (nor probe its addresses).
@@ -626,6 +665,28 @@ describe('confirmMemberEmailChange', () => {
     });
   });
 
+  it('answers unavailable, keeping the link, when the Auth lookup fails', async () => {
+    const p = await pending();
+    const restore = failAuthLookupOnce();
+    try {
+      await expect(
+        call(confirmMemberEmailChange, p.uid, { token: p.token })
+      ).rejects.toMatchObject({
+        code: 'unavailable',
+        message: AUTH_LOOKUP_UNAVAILABLE,
+      });
+    } finally {
+      restore();
+    }
+    expect(await memberEmail(p.memberRef)).toMatchObject({
+      email: p.memberEmail,
+    });
+    // The link still works: retrying is the remedy.
+    await expect(
+      call(confirmMemberEmailChange, p.uid, { token: p.token })
+    ).resolves.toMatchObject({ email: p.newEmail });
+  });
+
   it('refuses when the member left the group meanwhile', async () => {
     const p = await pending();
     await p.memberRef.update({ active: false, leftGroup: true });
@@ -768,6 +829,22 @@ describe('updateMemberEmails', () => {
         emailLower: other,
       });
     }
+  });
+
+  it('answers unavailable, writing nothing, when the Auth lookup fails', async () => {
+    const user = await seedUser();
+    const other = uniqueEmail('other');
+    const row = await linkedRow(user, other);
+    const restore = failAuthLookupOnce();
+    try {
+      await expect(update(user)).rejects.toMatchObject({
+        code: 'unavailable',
+        message: AUTH_LOOKUP_UNAVAILABLE,
+      });
+    } finally {
+      restore();
+    }
+    expect(await memberEmail(row)).toEqual({ email: other, emailLower: other });
   });
 
   it('refuses an onlyFromEmail that is not a string', async () => {

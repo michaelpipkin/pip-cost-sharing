@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
-import { getAuth } from 'firebase-admin/auth';
+import { getAuth, type UserRecord } from 'firebase-admin/auth';
 import {
   DocumentReference,
   getFirestore,
@@ -85,6 +85,13 @@ export const DUPLICATE_MEMBER_EMAIL =
   'A member with this email address already exists in the group.';
 /** permission-denied: the caller's own login email is not verified. */
 export const VERIFY_LOGIN_EMAIL = 'Verify your login email first.';
+/**
+ * unavailable: the Auth lookup behind VERIFY_LOGIN_EMAIL failed (an outage,
+ * not an answer), so the caller should simply retry. The app matches this
+ * text (src/app/utilities/callable-error.util.ts).
+ */
+export const AUTH_LOOKUP_UNAVAILABLE =
+  "Couldn't check your account right now. Please try again.";
 /**
  * failed-precondition (updateMemberEmails): the verified login email is not
  * one valid address (a legacy account), so no member doc may hold it. The
@@ -182,7 +189,9 @@ function assertActive(member: DocumentData | undefined): void {
  * unverified (or missing) account: uids are free, so without this the
  * per-uid limit would not bound the mail an attacker could send (fix round
  * 1, I1). The app's confirm page is behind authGuard, which requires a
- * verified account too.
+ * verified account too. A lookup that fails for any other reason is
+ * `unavailable` (AUTH_LOOKUP_UNAVAILABLE): it says nothing about the
+ * account, so it must not send the user off to verify their email.
  */
 async function requireVerifiedCaller(
   uid: string
@@ -207,14 +216,23 @@ async function pendingTokensOf(
   return snap.docs.map((d) => d.ref);
 }
 
-/** The caller's Auth address (as stored) when it is verified; else null. */
+/**
+ * The caller's Auth address (as stored) when it is verified; null when it is
+ * not, or when the account does not exist. Any other lookup failure throws
+ * `unavailable`.
+ */
 async function verifiedAuthEmail(uid: string): Promise<string | null> {
+  let record: UserRecord;
   try {
-    const record = await getAuth().getUser(uid);
-    return record.emailVerified && record.email ? record.email : null;
-  } catch {
-    return null;
+    record = await getAuth().getUser(uid);
+  } catch (error) {
+    if ((error as { code?: unknown } | null)?.code === 'auth/user-not-found') {
+      return null;
+    }
+    console.error(`Auth lookup failed for ${uid}:`, error);
+    throw new HttpsError('unavailable', AUTH_LOOKUP_UNAVAILABLE);
   }
+  return record.emailVerified && record.email ? record.email : null;
 }
 
 /**
@@ -338,7 +356,8 @@ async function refundRequestAllowance(
  *  - pending: a confirmation link was mailed to it; nothing changes until
  *    the link is used. Each new request replaces the member's earlier link.
  * The caller must be verified (VERIFY_LOGIN_EMAIL) and an active member
- * (NOT_ACTIVE_MEMBER), both permission-denied.
+ * (NOT_ACTIVE_MEMBER), both permission-denied; a failed Auth lookup is
+ * unavailable (AUTH_LOOKUP_UNAVAILABLE).
  */
 export const requestMemberEmailChange = onCall<{
   groupId?: unknown;
@@ -460,7 +479,9 @@ export const requestMemberEmailChange = onCall<{
  *  - permission-denied: VERIFY_LOGIN_EMAIL (the caller is not verified),
  *    CONFIRM_WRONG_ACCOUNT (another account asked for it),
  *    NOT_ACTIVE_MEMBER (the caller left the group);
- *  - already-exists: DUPLICATE_MEMBER_EMAIL (another member took it).
+ *  - already-exists: DUPLICATE_MEMBER_EMAIL (another member took it);
+ *  - unavailable: AUTH_LOOKUP_UNAVAILABLE (the Auth lookup failed; the
+ *    link is untouched, so a retry can use it).
  */
 export const confirmMemberEmailChange = onCall<{ token?: unknown }>(
   callableAppCheck,
@@ -537,7 +558,8 @@ const MAX_FROM_EMAIL_LENGTH = 1000;
  * the address.
  *
  * Errors: unauthenticated; permission-denied VERIFY_LOGIN_EMAIL (no verified
- * Auth address); invalid-argument (`onlyFromEmail` not a string);
+ * Auth address); unavailable AUTH_LOOKUP_UNAVAILABLE (the Auth lookup
+ * failed); invalid-argument (`onlyFromEmail` not a string);
  * failed-precondition LOGIN_EMAIL_INVALID (the Auth address is not one valid
  * address, which a member doc may not hold).
  */

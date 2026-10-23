@@ -559,6 +559,32 @@ describe('EditMemberComponent', () => {
       expect(mockAnalytics.logError).not.toHaveBeenCalled();
     });
 
+    // T3: a failed Auth lookup is an outage; the remedy is to try again.
+    it('should ask to try again when the account check is unavailable', async () => {
+      mockMemberService.requestMemberEmailChange.mockRejectedValue(
+        Object.assign(
+          new Error(
+            "Couldn't check your account right now. Please try again. [503]"
+          ),
+          { code: 'functions/unavailable' }
+        )
+      );
+      await typeInto('edit-member-email-input', 'me.new@example.com');
+
+      await component.onSubmit();
+
+      expect(mockSnackBar.openFromComponent).toHaveBeenCalledWith(
+        expect.anything(),
+        {
+          data: {
+            message: "Couldn't check your account right now. Please try again.",
+          },
+        }
+      );
+      expect(mockDialogRef.close).not.toHaveBeenCalled();
+      expect(mockAnalytics.logError).not.toHaveBeenCalled();
+    });
+
     it('should log an unexpected failure', async () => {
       mockMemberService.requestMemberEmailChange.mockRejectedValue(
         Object.assign(new Error('boom'), { code: 'functions/internal' })

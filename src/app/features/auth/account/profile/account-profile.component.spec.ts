@@ -436,6 +436,24 @@ describe('AccountProfileComponent', () => {
       expect(mockLoadingService.loadingOff).toHaveBeenCalled();
     });
 
+    // T3: a failed Auth lookup is an outage, so the remedy is to retry.
+    it('asks to try again when the server could not check the account', async () => {
+      mockMemberService.updateAllMemberEmails.mockRejectedValue(
+        Object.assign(
+          new Error(
+            "Couldn't check your account right now. Please try again. [503]"
+          ),
+          { code: 'functions/unavailable' }
+        )
+      );
+      await component.syncMemberEmails();
+      const data = mockSnackbar.openFromComponent.mock.calls[0]?.[1]?.data;
+      expect(data?.message).toBe(
+        "Couldn't check your account right now. Please try again."
+      );
+      expect(mockLoadingService.loadingOff).toHaveBeenCalled();
+    });
+
     // Fix round 1, Minor 1.
     it('explains when the server refuses a login email that is not one valid address', async () => {
       mockMemberService.updateAllMemberEmails.mockRejectedValue(
