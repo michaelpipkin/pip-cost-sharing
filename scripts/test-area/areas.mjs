@@ -450,6 +450,8 @@ export const AREAS = {
       ...SNACKBAR,
       ...APP_CHECK_ERRORS,
       ...USER_SERVICE,
+      // user.service reads the daily group-mail limit refusal.
+      ...CALLABLE_ERROR,
       `${FEATURES}/expenses/add-expense`,
       `${FEATURES}/expenses/add-expense-options-dialog`,
       `${FEATURES}/expenses/edit-expense`,
@@ -522,6 +524,8 @@ export const AREAS = {
       ...SNACKBAR,
       ...APP_CHECK_ERRORS,
       ...USER_SERVICE,
+      // user.service reads the daily group-mail limit refusal.
+      ...CALLABLE_ERROR,
       `${FEATURES}/expenses/scan-receipt`,
       `${SERVICES}/receipt-scan.service.spec.ts`,
       ...RECEIPT_CAPTURE,
