@@ -26,6 +26,7 @@ import {
   getSmtpPassword,
   isDemoProject,
   normalizeEmail,
+  onePerGroupLinks,
 } from './common';
 import {
   buildEmailHtml,
@@ -637,7 +638,9 @@ export const deleteGroup = onCall(callableAppCheck, async (request) => {
 /**
  * Links unlinked (`userRef == null`) member records with a given email to
  * `uid`. Matches on `emailLower` so casing differences between the invite
- * and the registered account don't prevent the link. Exported separately
+ * and the registered account don't prevent the link. Links at most one row
+ * per group, and none in a group where `uid` already has a row
+ * (onePerGroupLinks). Exported separately
  * from the callable wrapper below so it has direct unit test coverage
  * without mocking the callable request shape (mirrors
  * handleUserGroupMembership / deleteGroupInternal).
@@ -663,16 +666,19 @@ export async function linkInvitedMembersInternal(
       normalizeEmail(memberEmail) === emailLower
     );
   });
-  if (matching.length > 0) {
-    const userRef = db.collection('users').doc(uid);
+  const userRef = db.collection('users').doc(uid);
+  const links = await onePerGroupLinks(
+    matching.map((memberDoc) => ({ ref: memberDoc.ref, userRef }))
+  );
+  if (links.length > 0) {
     const batch = db.batch();
-    for (const memberDoc of matching) {
-      batch.update(memberDoc.ref, { userRef });
+    for (const link of links) {
+      batch.update(link.ref, { userRef });
     }
     await batch.commit();
   }
 
-  return { membersLinked: matching.length };
+  return { membersLinked: links.length };
 }
 
 /**

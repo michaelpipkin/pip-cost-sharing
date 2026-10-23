@@ -501,10 +501,9 @@ describe('repairOrphanedMembersInternal: what it skips', () => {
 });
 
 describe('repairOrphanedMembersInternal: repeated paths', () => {
-  // BUG (B10): functions/src/admin-reports.ts:624-653 maps every path to a
-  // ref without de-duplicating, so a repeated member path is linked and
-  // counted twice; deferred by owner 2026-10-21
-  it.fails('counts a repeated member path once', async () => {
+  // B10: onePerGroupLinks keeps one link per group and user, so a repeated
+  // path is linked and counted once.
+  it('counts a repeated member path once', async () => {
     const email = `${uniqueId('rdup')}@repair.test`;
     await db.collection('users').doc(uniqueId('u')).set({ emailLower: email });
     const member = await makeMember(await makeGroup(), { email });

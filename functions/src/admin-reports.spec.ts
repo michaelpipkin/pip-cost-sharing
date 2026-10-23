@@ -272,6 +272,49 @@ describe('repairOrphanedMembersInternal', () => {
     const alreadyLinkedDoc = await alreadyLinked.get();
     expect((alreadyLinkedDoc.data()!['userRef'] as DocumentReference).id).toBe(someUser.id);
   });
+
+  // One user on two rows of a group would count twice in its balances.
+  it('does not link a row in a group where the matched user already has a row', async () => {
+    const address = `repair-dup-${Math.random().toString(36).slice(2, 10)}@example.com`;
+    const group = db.collection('groups').doc();
+    const user = db.collection('users').doc();
+    await user.set({ email: address, emailLower: address });
+    await group.collection('members').doc().set({
+      userRef: user,
+      email: address,
+      displayName: 'Linked',
+    });
+    const orphan = group.collection('members').doc();
+    await orphan.set({ userRef: null, email: address, displayName: 'Orphan' });
+
+    const result = await repairOrphanedMembersInternal(db, [orphan.path]);
+
+    expect(result.linkedCount).toBe(0);
+    expect((await orphan.get()).data()!['userRef']).toBeNull();
+  });
+
+  it('links only one of two orphan rows for the same user in one group', async () => {
+    const address = `repair-two-${Math.random().toString(36).slice(2, 10)}@example.com`;
+    const group = db.collection('groups').doc();
+    const user = db.collection('users').doc();
+    await user.set({ email: address, emailLower: address });
+    const first = group.collection('members').doc();
+    const second = group.collection('members').doc();
+    await first.set({ userRef: null, email: address, displayName: 'One' });
+    await second.set({ userRef: null, email: address, displayName: 'Two' });
+
+    const result = await repairOrphanedMembersInternal(db, [
+      first.path,
+      second.path,
+    ]);
+
+    expect(result.linkedCount).toBe(1);
+    const linked = [
+      (await first.get()).data()!['userRef'],
+      (await second.get()).data()!['userRef'],
+    ].filter((ref) => ref !== null);
+    expect(linked).toHaveLength(1);
+  });
 });
 
 describe('backfillOrphanedRegistrationsInternal', () => {

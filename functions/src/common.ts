@@ -1,5 +1,9 @@
 import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
-import { Timestamp, type DocumentSnapshot } from 'firebase-admin/firestore';
+import {
+  Timestamp,
+  type DocumentReference,
+  type DocumentSnapshot,
+} from 'firebase-admin/firestore';
 import { HttpsError } from 'firebase-functions/v2/https';
 import type {
   CallableOptions,
@@ -75,6 +79,30 @@ export async function deleteDocsIfUnchanged(
     deleted += results.reduce((a, b) => a + b, 0);
   }
   return deleted;
+}
+
+/**
+ * The links (an unlinked member doc and the user it would be linked to)
+ * that keep each user on at most one row per group: a link is dropped when
+ * its user already has a row in that group, or when an earlier link in the
+ * list already claims that group for the user. One user on two rows would
+ * count twice in the group's balances and splits.
+ */
+export async function onePerGroupLinks<
+  T extends { ref: DocumentReference; userRef: DocumentReference },
+>(links: T[]): Promise<T[]> {
+  const firstPerGroup = new Map<string, T>();
+  for (const link of links) {
+    const key = `${link.ref.parent.path}|${link.userRef.path}`;
+    if (!firstPerGroup.has(key)) firstPerGroup.set(key, link);
+  }
+  const candidates = [...firstPerGroup.values()];
+  const existing = await Promise.all(
+    candidates.map((link) =>
+      link.ref.parent.where('userRef', '==', link.userRef).limit(1).get()
+    )
+  );
+  return candidates.filter((_, i) => existing[i]!.empty);
 }
 
 // normalizeEmail and profileEmail live in a dependency-free module so the

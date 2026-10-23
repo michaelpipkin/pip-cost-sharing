@@ -80,6 +80,70 @@ describe('linkInvitedMembersInternal', () => {
     expect((await memberRef.get()).data()?.['userRef']).toBeNull();
   });
 
+  // One user on two rows of a group would count twice in its balances.
+  it('skips a group where the caller already has a member row, and still links elsewhere', async () => {
+    const address = `dup-${randomUUID()}@example.com`;
+    const userRef = db.collection('users').doc();
+    const linkedGroup = db.collection('groups').doc();
+    await linkedGroup.collection('members').doc().set({
+      displayName: 'Me',
+      email: `login-${randomUUID()}@example.com`,
+      emailLower: 'ignored',
+      active: true,
+      groupAdmin: true,
+      userRef,
+    });
+    const placeholder = linkedGroup.collection('members').doc();
+    const otherGroupMember = db
+      .collection('groups')
+      .doc()
+      .collection('members')
+      .doc();
+    for (const ref of [placeholder, otherGroupMember]) {
+      await ref.set({
+        displayName: 'Invitee',
+        email: address,
+        emailLower: address,
+        active: true,
+        groupAdmin: false,
+        userRef: null,
+      });
+    }
+
+    const result = await linkInvitedMembersInternal(userRef.id, address);
+
+    expect(result.membersLinked).toBe(1);
+    expect((await placeholder.get()).data()?.['userRef']).toBeNull();
+    expect((await otherGroupMember.get()).data()?.['userRef']?.id).toBe(
+      userRef.id
+    );
+  });
+
+  it('links only one of two invited rows in the same group', async () => {
+    const address = `two-${randomUUID()}@example.com`;
+    const userRef = db.collection('users').doc();
+    const group = db.collection('groups').doc();
+    const rows = [group.collection('members').doc(), group.collection('members').doc()];
+    for (const ref of rows) {
+      await ref.set({
+        displayName: 'Invitee',
+        email: address,
+        emailLower: address,
+        active: true,
+        groupAdmin: false,
+        userRef: null,
+      });
+    }
+
+    const result = await linkInvitedMembersInternal(userRef.id, address);
+
+    expect(result.membersLinked).toBe(1);
+    const linked = (
+      await Promise.all(rows.map(async (ref) => (await ref.get()).data()?.['userRef']))
+    ).filter((ref) => ref !== null);
+    expect(linked).toHaveLength(1);
+  });
+
   it('returns zero when no member matches the email', async () => {
     const userRef = db.collection('users').doc();
     await userRef.set({ email: 'nobody@example.com' });
