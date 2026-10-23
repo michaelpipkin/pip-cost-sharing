@@ -42,7 +42,10 @@ import {
   reserveGroupMail,
 } from './mail-allowance';
 import { deleteExpiredMemberEmailChanges } from './member-email';
-import { linkPendingMembersFor } from './member-linking';
+import {
+  linkMemberByVerifiedEmail,
+  linkPendingMembersFor,
+} from './member-linking';
 import { removeAllFor, upsertVerifiedEmail } from './verified-emails';
 
 export {
@@ -950,13 +953,24 @@ export const syncUserEmailLower = onDocumentWritten('users/{userId}', async (eve
 
 /**
  * Same as syncUserEmailLower, for `groups/{groupId}/members/{memberId}.emailLower`.
+ * Also links an unlinked row to the owner of its address in the
+ * verified-address index when the write created the row or changed its email
+ * (linkMemberByVerifiedEmail); a link writes emailLower itself.
  */
 export const syncMemberEmailLower = onDocumentWritten(
   'groups/{groupId}/members/{memberId}',
   async (event) => {
     const after = event.data?.after;
     if (!after?.exists) return;
-    await syncEmailLower(after.ref, after.data());
+    const data = after.data()!;
+    const result = await linkMemberByVerifiedEmail(
+      db,
+      after.ref,
+      event.data?.before?.data(),
+      data
+    );
+    if (result === 'linked') return;
+    await syncEmailLower(after.ref, data);
   }
 );
 

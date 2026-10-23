@@ -1,6 +1,11 @@
-import type { Firestore, QueryDocumentSnapshot } from 'firebase-admin/firestore';
+import type {
+  DocumentData,
+  DocumentReference,
+  Firestore,
+  QueryDocumentSnapshot,
+} from 'firebase-admin/firestore';
 import { normalizeEmail, onePerGroupLinks } from './common';
-import { addressesOf } from './verified-emails';
+import { addressesOf, ownerOf } from './verified-emails';
 
 /** Values one `in` query takes. */
 const IN_QUERY_LIMIT = 30;
@@ -64,4 +69,75 @@ export async function linkPendingMembersFor(
     await batch.commit();
   }
   return links.length;
+}
+
+/** What linkMemberByVerifiedEmail did with a member write. */
+export type MemberLinkResult =
+  | 'linked'
+  | 'not-applicable'
+  | 'no-owner'
+  | 'already-in-group'
+  | 'stale';
+
+/** The normalized address of a member doc's `email`, or '' if it has none. */
+function memberAddress(data: DocumentData | undefined): string {
+  const email: unknown = data?.['email'];
+  return typeof email === 'string' ? normalizeEmail(email) : '';
+}
+
+/**
+ * Links an unlinked row to the owner of its email, when the write created the
+ * row or changed its email. `before` and `after` are the row's data around
+ * the write (`before` undefined for a create).
+ *
+ * Any other write is left alone, so an admin's unlink (userRef to null, same
+ * email) and account deletion's anonymizing never re-link. The link runs in
+ * a transaction that re-reads the row (stale if it is gone, already linked,
+ * or its email has changed again since this write) and checks the row's own
+ * group for a row already linked to the owner, so one account never gets
+ * two rows in a group, even when two rows are linked at once (logged, as
+ * 'already-in-group').
+ */
+export async function linkMemberByVerifiedEmail(
+  db: Firestore,
+  memberRef: DocumentReference,
+  before: DocumentData | undefined,
+  after: DocumentData
+): Promise<MemberLinkResult> {
+  const address = memberAddress(after);
+  if (
+    after['userRef'] !== null ||
+    address === '' ||
+    (before !== undefined && memberAddress(before) === address)
+  ) {
+    return 'not-applicable';
+  }
+
+  const owner = await ownerOf(db, address);
+  if (owner === null) return 'no-owner';
+  const userRef = db.collection('users').doc(owner);
+
+  const result = await db.runTransaction<MemberLinkResult>(async (txn) => {
+    const current = await txn.get(memberRef);
+    if (
+      !current.exists ||
+      current.get('userRef') !== null ||
+      memberAddress(current.data()) !== address
+    ) {
+      return 'stale';
+    }
+    const existing = await txn.get(
+      memberRef.parent.where('userRef', '==', userRef).limit(1)
+    );
+    if (!existing.empty) return 'already-in-group';
+    txn.update(memberRef, { userRef, emailLower: address });
+    return 'linked';
+  });
+  if (result === 'already-in-group') {
+    // An admin added one person twice under two of their addresses.
+    console.warn(
+      `Not linking ${memberRef.path}: user ${owner} already has a row in its group`
+    );
+  }
+  return result;
 }

@@ -23,6 +23,8 @@ import {
   repairOrphanedMembersInternal,
   summarizeGroups,
 } from './admin-reports';
+import { makeGroup, makeMember, uniqueId } from './test-fixtures';
+import { upsertVerifiedEmail } from './verified-emails';
 
 const db = getFirestore();
 
@@ -202,61 +204,72 @@ describe('buildActiveGroupsReport', () => {
 });
 
 describe('buildOrphanedMembersReport', () => {
-  it('separates a single email match from multiple candidate matches', async () => {
-    const group = db.collection('groups').doc();
+  function stat(
+    result: Awaited<ReturnType<typeof buildOrphanedMembersReport>>,
+    label: string
+  ) {
+    return result.summary[0]!.stats.find((s) => s.label === label)?.value as number;
+  }
 
-    const singleMatchUser = db.collection('users').doc();
-    await singleMatchUser.set({ email: 'single@example.com', emailLower: 'single@example.com' });
-
-    const dupeUserA = db.collection('users').doc();
-    await dupeUserA.set({ email: 'dupe@example.com', emailLower: 'dupe@example.com' });
-    const dupeUserB = db.collection('users').doc();
-    await dupeUserB.set({ email: 'DUPE@example.com', emailLower: 'dupe@example.com' });
-
-    const linkableMember = group.collection('members').doc();
-    await linkableMember.set({
-      userRef: null,
-      email: 'single@example.com',
-      displayName: 'Single Match',
+  it('counts a row as linkable when its address has an index owner and unmatched otherwise', async () => {
+    const tag = uniqueId('orph');
+    const owned = `${tag}-owned@Example.com`;
+    const owner = uniqueId('owner');
+    await upsertVerifiedEmail(db, owned, owner, 'login');
+    // A profile email alone is not proof of the address, so it matches nothing.
+    const profileOnly = `${tag}-profile@example.com`;
+    await db.collection('users').doc(uniqueId('u')).set({
+      email: profileOnly,
+      emailLower: profileOnly,
     });
+    const before = await buildOrphanedMembersReport(db);
 
-    const reviewMember = group.collection('members').doc();
-    await reviewMember.set({
-      userRef: null,
-      email: 'dupe@example.com',
-      displayName: 'Needs Review',
+    const group = await makeGroup();
+    const linkableMember = await makeMember(group, {
+      email: owned.toLowerCase(),
+      displayName: 'Owned',
     });
-
-    const placeholderMember = group.collection('members').doc();
-    await placeholderMember.set({ userRef: null, email: '', displayName: 'Placeholder' });
+    const unmatchedMember = await makeMember(group, {
+      email: profileOnly,
+      displayName: 'Profile Only',
+    });
+    const placeholder = await makeMember(group, { email: '', displayName: 'Placeholder' });
+    const blank = await makeMember(group, { email: '  ', displayName: 'Blank' });
 
     const result = await buildOrphanedMembersReport(db);
-    const linkableTable = result.tables[0]!;
-    const reviewTable = result.tables[1]!;
 
-    expect(linkableTable.rows.some((r) => r['path'] === linkableMember.path)).toBe(true);
-    expect(reviewTable.rows.some((r) => r['displayName'] === 'Needs Review')).toBe(true);
-    expect(linkableTable.rows.some((r) => r['displayName'] === 'Placeholder')).toBe(false);
-    expect(reviewTable.rows.some((r) => r['displayName'] === 'Placeholder')).toBe(false);
+    expect(result.tables.map((t) => t.title)).toEqual(['Linkable']);
+    expect(result.summary[0]!.stats.map((s) => s.label)).not.toContain(
+      'Needs Manual Review'
+    );
+    const rows = result.tables[0]!.rows;
+    expect(rows.find((r) => r['path'] === linkableMember.path)).toMatchObject({
+      matchedUserId: owner,
+      email: owned.toLowerCase(),
+    });
+    for (const ref of [unmatchedMember, placeholder, blank]) {
+      expect(rows.some((r) => r['path'] === ref.path)).toBe(false);
+    }
+    expect(
+      stat(result, 'Linkable (exact email match)') -
+        stat(before, 'Linkable (exact email match)')
+    ).toBe(1);
+    expect(stat(result, 'No Matching User') - stat(before, 'No Matching User')).toBe(1);
   });
 });
 
 describe('repairOrphanedMembersInternal', () => {
-  it('links a member with exactly one matching user and skips ambiguous/already-linked ones', async () => {
-    const group = db.collection('groups').doc();
+  it('links a member whose address has an index owner and skips already-linked ones', async () => {
+    const address = `${uniqueId('link')}@example.com`;
+    const owner = uniqueId('owner');
+    await upsertVerifiedEmail(db, address, owner, 'login');
+    const group = await makeGroup();
 
-    const matchedUser = db.collection('users').doc();
-    await matchedUser.set({ email: 'link@example.com', emailLower: 'link@example.com' });
-
-    const linkable = group.collection('members').doc();
-    await linkable.set({ userRef: null, email: 'link@example.com', displayName: 'Linkable' });
-
-    const alreadyLinked = group.collection('members').doc();
-    const someUser = db.collection('users').doc();
-    await alreadyLinked.set({
+    const linkable = await makeMember(group, { email: address.toUpperCase() });
+    const someUser = db.collection('users').doc(uniqueId('u'));
+    const alreadyLinked = await makeMember(group, {
       userRef: someUser,
-      email: 'already@example.com',
-      displayName: 'Already Linked',
+      email: `${uniqueId('already')}@example.com`,
     });
 
     const result = await repairOrphanedMembersInternal(db, [
@@ -265,53 +278,57 @@ describe('repairOrphanedMembersInternal', () => {
     ]);
 
     expect(result.linkedCount).toBe(1);
-
-    const linkableDoc = await linkable.get();
-    expect((linkableDoc.data()!['userRef'] as DocumentReference).id).toBe(matchedUser.id);
-
-    const alreadyLinkedDoc = await alreadyLinked.get();
-    expect((alreadyLinkedDoc.data()!['userRef'] as DocumentReference).id).toBe(someUser.id);
+    const linkableRef = (await linkable.get()).get('userRef') as DocumentReference;
+    expect(linkableRef.path).toBe(`users/${owner}`);
+    const alreadyRef = (await alreadyLinked.get()).get('userRef') as DocumentReference;
+    expect(alreadyRef.id).toBe(someUser.id);
   });
 
-  // One user on two rows of a group would count twice in its balances.
-  it('does not link a row in a group where the matched user already has a row', async () => {
-    const address = `repair-dup-${Math.random().toString(36).slice(2, 10)}@example.com`;
-    const group = db.collection('groups').doc();
-    const user = db.collection('users').doc();
-    await user.set({ email: address, emailLower: address });
-    await group.collection('members').doc().set({
-      userRef: user,
+  it('does not link through a profile email that is not in the index', async () => {
+    const address = `${uniqueId('profile')}@example.com`;
+    await db.collection('users').doc(uniqueId('u')).set({
       email: address,
-      displayName: 'Linked',
+      emailLower: address,
     });
-    const orphan = group.collection('members').doc();
-    await orphan.set({ userRef: null, email: address, displayName: 'Orphan' });
+    const orphan = await makeMember(await makeGroup(), { email: address });
 
     const result = await repairOrphanedMembersInternal(db, [orphan.path]);
 
     expect(result.linkedCount).toBe(0);
-    expect((await orphan.get()).data()!['userRef']).toBeNull();
+    expect((await orphan.get()).get('userRef')).toBeNull();
+  });
+
+  // One user on two rows of a group would count twice in its balances.
+  it('does not link a row in a group where the matched user already has a row', async () => {
+    const address = `${uniqueId('repair-dup')}@example.com`;
+    const owner = uniqueId('owner');
+    await upsertVerifiedEmail(db, address, owner, 'login');
+    const group = await makeGroup();
+    await makeMember(group, { userRef: db.doc(`users/${owner}`), email: address });
+    const orphan = await makeMember(group, { email: address });
+
+    const result = await repairOrphanedMembersInternal(db, [orphan.path]);
+
+    expect(result.linkedCount).toBe(0);
+    expect((await orphan.get()).get('userRef')).toBeNull();
   });
 
   it('links only one of two orphan rows for the same user in one group', async () => {
-    const address = `repair-two-${Math.random().toString(36).slice(2, 10)}@example.com`;
-    const group = db.collection('groups').doc();
-    const user = db.collection('users').doc();
-    await user.set({ email: address, emailLower: address });
-    const first = group.collection('members').doc();
-    const second = group.collection('members').doc();
-    await first.set({ userRef: null, email: address, displayName: 'One' });
-    await second.set({ userRef: null, email: address, displayName: 'Two' });
+    const owner = uniqueId('owner');
+    const first = `${uniqueId('repair-one')}@example.com`;
+    const second = `${uniqueId('repair-two')}@example.com`;
+    await upsertVerifiedEmail(db, first, owner, 'login');
+    await upsertVerifiedEmail(db, second, owner, 'group-confirm');
+    const group = await makeGroup();
+    const rowA = await makeMember(group, { email: first });
+    const rowB = await makeMember(group, { email: second });
 
-    const result = await repairOrphanedMembersInternal(db, [
-      first.path,
-      second.path,
-    ]);
+    const result = await repairOrphanedMembersInternal(db, [rowA.path, rowB.path]);
 
     expect(result.linkedCount).toBe(1);
     const linked = [
-      (await first.get()).data()!['userRef'],
-      (await second.get()).data()!['userRef'],
+      (await rowA.get()).get('userRef'),
+      (await rowB.get()).get('userRef'),
     ].filter((ref) => ref !== null);
     expect(linked).toHaveLength(1);
   });
