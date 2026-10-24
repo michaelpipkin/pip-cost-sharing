@@ -1,11 +1,11 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { getAuth } from 'firebase-admin/auth';
 import {
+  DocumentReference,
   getFirestore,
   Query,
   Timestamp,
   type DocumentData,
-  type DocumentReference,
 } from 'firebase-admin/firestore';
 import { describe, expect, it, vi } from 'vitest';
 import { verifiedEmailId } from './email-identity';
@@ -15,6 +15,7 @@ import {
   confirmMemberEmailChange,
   deleteExpiredMemberEmailChanges,
   requestMemberEmailChange,
+  syncMemberEmailLower,
   updateMemberEmails,
 } from './index';
 import {
@@ -35,7 +36,11 @@ import {
   VERIFY_LOGIN_EMAIL,
 } from './member-email';
 import { makeGroup, makeMember, uniqueId } from './test-fixtures';
-import { ownerOf, VERIFIED_EMAILS } from './verified-emails';
+import {
+  ownerOf,
+  upsertVerifiedEmail,
+  VERIFIED_EMAILS,
+} from './verified-emails';
 
 const db = getFirestore();
 
@@ -818,6 +823,187 @@ describe('confirmMemberEmailChange', () => {
     expect(await memberEmail(p.memberRef)).toMatchObject({
       email: p.memberEmail,
     });
+  });
+});
+
+// A row that stops being linked to its user loses that user's pending
+// confirmation links (syncMemberEmailLower). Otherwise an admin could unlink
+// the row and give it another address the same user proved; the trigger
+// relinks it, and the old link would work again. The emulators used here run
+// no triggers, so each write's event is delivered by hand, as in
+// email-lower-sync.spec.ts.
+describe('unlinking cancels pending confirmation links', () => {
+  async function pending(): Promise<
+    Seeded & { newEmail: string; token: string }
+  > {
+    const s = await seedLinkedMember();
+    const newEmail = uniqueEmail('New');
+    await request(s, newEmail);
+    return { ...s, newEmail, token: await mailedToken(newEmail) };
+  }
+
+  /** Applies `fields` to the row, then delivers that write's event. */
+  async function writeAndTrigger(
+    ref: DocumentReference,
+    fields: Record<string, unknown>
+  ) {
+    const before = await ref.get();
+    await ref.update(fields);
+    const after = await ref.get();
+    return () => deliver(ref, before, after);
+  }
+
+  function deliver(ref: DocumentReference, before: unknown, after: unknown) {
+    return (syncMemberEmailLower as any).run({
+      data: { before, after },
+      params: { groupId: ref.parent.parent!.id, memberId: ref.id },
+    });
+  }
+
+  async function tokenExists(token: string): Promise<boolean> {
+    return (await db.collection(MEMBER_EMAIL_TOKENS).doc(sha256(token)).get())
+      .exists;
+  }
+
+  /** Another address `uid` has proven, so the trigger relinks a row to it. */
+  async function secondProvenAddress(uid: string): Promise<string> {
+    const address = uniqueEmail('second');
+    await upsertVerifiedEmail(db, address, uid, 'group-confirm');
+    return address;
+  }
+
+  it('makes the old link fail after an unlink, re-address and relink', async () => {
+    const p = await pending();
+    const bystander = await pending();
+    const second = await secondProvenAddress(p.uid);
+
+    const unlink = await writeAndTrigger(p.memberRef, { userRef: null });
+    await unlink();
+    const readdress = await writeAndTrigger(p.memberRef, { email: second });
+    await readdress();
+
+    // The trigger linked the row back to the same user...
+    expect((await p.memberRef.get()).get('userRef').id).toBe(p.uid);
+    // ...but the link sent before the unlink no longer works.
+    expect(await tokenExists(p.token)).toBe(false);
+    await expect(
+      call(confirmMemberEmailChange, p.uid, { token: p.token })
+    ).rejects.toMatchObject({
+      code: 'failed-precondition',
+      message: CONFIRM_LINK_INVALID,
+    });
+    expect(await memberEmail(p.memberRef)).toMatchObject({ email: second });
+    // Another row's pending link is untouched.
+    expect(await tokenExists(bystander.token)).toBe(true);
+  });
+
+  it('cancels the link whichever order the two events arrive in', async () => {
+    const p = await pending();
+    const second = await secondProvenAddress(p.uid);
+
+    const unlink = await writeAndTrigger(p.memberRef, { userRef: null });
+    const readdress = await writeAndTrigger(p.memberRef, { email: second });
+    await readdress();
+    expect((await p.memberRef.get()).get('userRef').id).toBe(p.uid);
+    await unlink();
+
+    expect(await tokenExists(p.token)).toBe(false);
+  });
+
+  it('cancels the link when the row is deleted', async () => {
+    const p = await pending();
+    const before = await p.memberRef.get();
+    await p.memberRef.delete();
+
+    await deliver(p.memberRef, before, await p.memberRef.get());
+
+    expect(await tokenExists(p.token)).toBe(false);
+  });
+
+  it('cancels the link when the row is linked to another user', async () => {
+    const p = await pending();
+    const other = db.collection('users').doc(uniqueId('other'));
+    await other.set({ email: uniqueEmail('other') });
+
+    const relink = await writeAndTrigger(p.memberRef, { userRef: other });
+    await relink();
+
+    expect(await tokenExists(p.token)).toBe(false);
+  });
+
+  it('keeps the link through a write that leaves the row linked', async () => {
+    const p = await pending();
+
+    const rename = await writeAndTrigger(p.memberRef, {
+      displayName: `Renamed ${randomUUID()}`,
+    });
+    await rename();
+
+    expect(await tokenExists(p.token)).toBe(true);
+    await expect(
+      call(confirmMemberEmailChange, p.uid, { token: p.token })
+    ).resolves.toMatchObject({ email: p.newEmail });
+  });
+
+  it('logs a failed cancellation and still keeps emailLower in step', async () => {
+    const p = await pending();
+    const readdress = uniqueEmail('Readdressed');
+    const unlink = await writeAndTrigger(p.memberRef, {
+      userRef: null,
+      email: readdress,
+    });
+    // Only the cancellation reads with Query.get: the address has no owner,
+    // so no link is attempted.
+    vi.spyOn(Query.prototype, 'get').mockRejectedValue(new Error('down'));
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      await expect(unlink()).resolves.toBeUndefined();
+    } finally {
+      vi.restoreAllMocks();
+    }
+
+    expect(log).toHaveBeenCalledTimes(1);
+    const logged = log.mock.calls[0]!.join(' ');
+    expect(logged).toContain(p.memberRef.path);
+    expect(logged.toLowerCase()).not.toContain(readdress.toLowerCase());
+    expect((await p.memberRef.get()).get('emailLower')).toBe(
+      readdress.toLowerCase()
+    );
+  });
+
+  // The request's transaction re-reads the row: an unlink that lands after
+  // the callable's first read refuses the request instead of leaving a link
+  // behind that no unlink event will ever cancel.
+  it('refuses a request whose row is unlinked before its transaction', async () => {
+    const s = await seedLinkedMember();
+    const newEmail = uniqueEmail('new');
+    const realGet = DocumentReference.prototype.get;
+    let unlinked = false;
+    vi.spyOn(DocumentReference.prototype, 'get').mockImplementation(
+      async function (this: DocumentReference) {
+        const snap = await realGet.call(this);
+        if (!unlinked && this.path === s.memberRef.path) {
+          unlinked = true;
+          await this.update({ userRef: null });
+        }
+        return snap;
+      }
+    );
+    try {
+      await expect(request(s, newEmail)).rejects.toMatchObject({
+        code: 'permission-denied',
+      });
+    } finally {
+      vi.restoreAllMocks();
+    }
+
+    expect(unlinked).toBe(true);
+    expect(await mailTo(newEmail)).toHaveLength(0);
+    const left = await db
+      .collection(MEMBER_EMAIL_TOKENS)
+      .where('memberRef', '==', s.memberRef)
+      .get();
+    expect(left.empty).toBe(true);
   });
 });
 

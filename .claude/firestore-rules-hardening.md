@@ -846,7 +846,9 @@ members whose email isn't their account's verified address for manual
 review (it never unlinks). Dry-run it before the release; `-- --apply` only
 after B14 is deployed (an old client would rewrite the unverified address);
 run `repairOrphanedMembers` / `link-orphaned-members` only after it. Proved
-on the test emulators only; not yet run against production.
+on the test emulators first; the owner has since run it against production
+with `--apply`, along with the post-deploy `member-email-mismatch` audit
+(confirmed 2026-10-24).
 
 Fix round 1 (2026-10-22): the client's no-profile fallback now creates the
 doc with '' and stores the address through the token-refreshing sync (a
@@ -1000,6 +1002,28 @@ direct-SDK attacks after the read half merged:
 
 The self-delete clause on `members` is gone as well. Nothing in the app uses
 it any more, and a direct self-delete would orphan the member's splits.
+
+### Unlinking cancels pending group-email links (2026-10-24, branch `unlink-cancels-email-links`)
+
+Not yet merged or deployed. The last open follow-up from the read half: an
+admin could unlink a row, change its email to another address the same user
+had proven, and the member trigger relinked it, after which that user's old
+pending group-email confirmation link for the row worked again
+(`confirmMemberEmailChange` checks only that the row is the caller's now).
+
+- `syncMemberEmailLower` now calls `cancelPendingEmailChanges`
+  (`member-email.ts`) whenever a write takes the row away from the user it
+  was linked to: an unlink, a relink to another user, or a delete. It runs
+  before the relinking step, so it works whichever order the unlink and
+  re-address events arrive in. A failure is logged (and so reaches the
+  function-error alert); confirming refuses while the row is unlinked anyway.
+- `requestMemberEmailChange` re-reads the row inside the transaction that
+  creates the token, so an unlink racing the request either refuses it or
+  waits for it and then cancels the new token.
+
+Tests: `functions/src/member-email.spec.ts`, "unlinking cancels pending
+confirmation links" (six of its seven tests failed against the old code).
+Functions only; no rules, app or data change.
 
 ## Sequencing note
 
