@@ -152,6 +152,7 @@
 </ol>
 
 <h2>Next release (branch users-read-lockdown): checklist</h2>
+<p class="note">Released 2026-10-23 with PR #724 (merge <code>e3be8ba4</code>, with the left-member lockdown). Steps 1-3 done by the owner; step 4 checked (both functions listed in production). Steps 5 and 6 are the owner's.</p>
 <p>Phase 3 (users read lockdown) and the verified-address index: functions, rules and app in one release. The release workflow traps are the same as in "Next release (branch overnight-hardening)" above: keep <code>[no-deploy]</code> out of the PR title and body, and merge with a merge commit. Do these in order:</p>
 <ol>
   <li><strong>Before merging, dry-run the backfill</strong> (production, read-only): <code>pnpm query backfill-verified-emails</code>. Expect about one create per verified account and 0 conflicts.</li>

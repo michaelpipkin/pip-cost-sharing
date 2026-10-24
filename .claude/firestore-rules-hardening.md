@@ -1,14 +1,13 @@
 # Firestore & Storage Rules Hardening — Handoff
 
-Status as of 2026-08-10: **Phases 0 and 1 done and deployed. Phase 2
-intentionally paused**, waiting on
-[[app-check-enforcement-followup.md]] — Storage/Firestore App Check
-enforcement is actively being rolled out over the next 3-4 days (as of
-2026-08-10), and per the Sequencing note at the bottom of this doc, Phase 2
-should not start until that's fully enforced. Explicit user decision
-2026-08-10: pause Phase 2 entirely rather than draft-ahead: **do not start
-Phase 2 work until told App Check enforcement is fully done on Storage and
-Firestore.** This doc is meant to be self-contained so a fresh session can
+Status as of 2026-10-23: **all phases (0-3) are done and deployed.**
+Phases 0 and 1 shipped 2026-08-10, Phase 2 by 2026-10-21, the Phase 3 write
+half (B13, B14, B19) with PR #720 on 2026-10-22, and the Phase 3 read half
+plus "Left members stay left" with PR #724 on 2026-10-23 (merge `e3be8ba4`;
+the `backfill-verified-emails` backfill was applied right after that
+deploy). The phase sections below are kept as the record of how each was
+designed and verified; read their "not yet deployed" wording as the state
+at the time. This doc is meant to be self-contained so a fresh session can
 pick this up with no other context.
 
 ## Why
@@ -158,7 +157,7 @@ group list still loads with multiple groups. Cover both against the emulator.
   `orderBy('name')`; the now-redundant client-side `.filter()` and its
   `userGroupIds` set were removed. Added a composite index
   (`memberUids` CONTAINS + `name` ASC) to `firestore.indexes.json` by hand
-  (not yet deployed/synced — see note below).
+  (deployed 2026-08-10 — see note below).
 - New `linkInvitedMembers` callable added to `functions/src/index.ts`
   (with `callableAppCheck`, consistent with the other 8 enforced callables).
   Takes `{email}`, uses `request.auth.uid` as the link target, finds
@@ -434,7 +433,8 @@ rules+indexes/hosting into one job per push to `release`, so "separately"
 means as its own PR/deploy rather than bundled with unrelated app changes,
 not a literally separate CI run.
 
-**Done 2026-08-18, emulator only — not yet deployed.** Wrote a
+**Done 2026-08-18 on the emulator; deployed later (on `release` by
+2026-10-21).** Wrote a
 comprehensive scripted verification (`scripts/db/phase2-rules-test.ts`,
 deleted after running — not committed) against a full local emulator
 suite (auth/firestore/functions/storage), using real signed-up personas
@@ -699,9 +699,9 @@ them, backfilling had to happen *before* merging anything, not after.
 `--apply`, then dry run again to confirm idempotence ("nothing to do"), all
 against production. Clears the way for the CI deploy.
 
-## Phase 3 — `users` collection (write half done 2026-10-21; read half done 2026-10-23)
+## Phase 3 — `users` collection (write half done 2026-10-21; read half done 2026-10-23; both deployed)
 
-**Done on branch `users-read-lockdown`** (2026-10-23, not yet deployed; see "Read half done" below). The paragraphs between here and that section describe the state before it and the approach as first agreed.
+**Done on branch `users-read-lockdown`** (2026-10-23, deployed with PR #724 the same day; see "Read half done" below). The paragraphs between here and that section describe the state before it and the approach as first agreed.
 
 `users/{uid}` is read cross-user for payment handles and `emailOptOut`
 (`user.service.ts`: `getUserDetails`, `getPaymentMethods` and the payment
@@ -726,12 +726,11 @@ deployable.
 ### Write half done (2026-10-21, Plan 4 task B13)
 
 Commit "Restrict user profile writes to the owner (and admins clearing a
-default group)" on branch `unit-gaps`. Not yet deployed (it ships with the
-branch's normal release). `users/{userId}` is now:
+default group)" on branch `unit-gaps`. Deployed with PR #720 (2026-10-22). As of that
+release, `users/{userId}` was:
 
-- `read`: unchanged, any signed-in user. **The read half is still
-  deferred**: any signed-in account can still read every user's email,
-  payment handles and `emailOptOut` (the gatekeeper function above).
+- `read`: unchanged, any signed-in user. The read half was still
+  deferred at that point (done 2026-10-23, see "Read half done" below).
 - `create`, `delete`: own doc only (`request.auth.uid == userId`); create
   keeps `emailCreateValid()`. No client path creates or deletes another
   user's doc (new profiles and account deletion run through the Admin SDK).
@@ -942,9 +941,12 @@ with a group email different from the linked login email.
 
 ### Read half done (2026-10-23, branch `users-read-lockdown`)
 
-Not yet deployed (it ships with the branch's release; the checklist is in
-`docs/superpowers/plans/2026-10-19-infra-followups.html`, "Next release
-(branch users-read-lockdown)"). Instead of one gatekeeper that only returns
+Deployed 2026-10-23 with PR #724 (merge `e3be8ba4`). The owner dry-ran
+`pnpm query backfill-verified-emails` before merging and ran it with
+`--apply` right after the deploy; `getMemberPaymentMethods` and
+`clearDefaultsOnGroupDeactivate` are listed in production. The release
+checklist is in `docs/superpowers/plans/2026-10-19-infra-followups.html`,
+"Next release (branch users-read-lockdown)". Instead of one gatekeeper that only returns
 payment fields, the read half was done with a private index plus server-side
 linking, so the app no longer needs to read or write any other user's doc:
 
@@ -979,6 +981,8 @@ linking, so the app no longer needs to read or write any other user's doc:
 
 ### Left members stay left (2026-10-23, branch `left-member-lockdown`)
 
+Deployed with the read half in PR #724.
+
 Two ways an admin could pull back a member who had left, found while checking
 direct-SDK attacks after the read half merged:
 
@@ -998,6 +1002,8 @@ The self-delete clause on `members` is gone as well. Nothing in the app uses
 it any more, and a direct self-delete would orphan the member's splits.
 
 ## Sequencing note
+
+(Historical: every phase has shipped. Kept as the reasoning behind the order.)
 
 Phases 0 and 1 are safe to deploy on any normal day; they change no
 authorization behavior. Phase 2 should go out on a day someone is watching,
