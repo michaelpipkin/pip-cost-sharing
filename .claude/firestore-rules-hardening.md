@@ -1003,9 +1003,9 @@ direct-SDK attacks after the read half merged:
 The self-delete clause on `members` is gone as well. Nothing in the app uses
 it any more, and a direct self-delete would orphan the member's splits.
 
-### Unlinking cancels pending group-email links (2026-10-24, branch `unlink-cancels-email-links`)
+### Unlinking cancels pending group-email links (2026-10-24, shipped in v1.27.2)
 
-Not yet merged or deployed. The last open follow-up from the read half: an
+Deployed 2026-10-24 in v1.27.2 (PR #726). The last open follow-up from the read half: an
 admin could unlink a row, change its email to another address the same user
 had proven, and the member trigger relinked it, after which that user's old
 pending group-email confirmation link for the row worked again

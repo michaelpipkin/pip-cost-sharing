@@ -296,6 +296,50 @@ Also ~15 new Android installs/day (`first_open` = 29 over 10/16-10/17).
 update prompt moving it?), 1.2.0/1.1.7 DAU trend, `update_prompt_*` counts,
 and `ready=false` rate by provider with a much larger sample.
 
+## FOLLOW-UP snapshot, 2026-10-24 (6 days after the baseline)
+
+Pulled via the Analytics MCP + read-only Firestore/Auth scripts.
+
+- **Adoption moved:** Android daily active users, written as
+  "1.3.1 / 1.2.0 / 1.1.7" per day: 10/16 = 10 / 15 / 3, 10/17 = 6 / 17 / 2,
+  10/18 = 14 / 16 / 4, 10/19 = 14 / 11 / 5, 10/20 = 14 / 13 / 6,
+  10/21 = 16 / 4 / 1, 10/22 = 7 / 9 / 3, 10/23 = 12 / 8 / 1. Over
+  10/17-10/23 user-days:
+  1.3.1 = 83, 1.2.0 = 78, 1.1.7 = 22 -> 1.3.1 is ~45% of Android activity
+  (baseline was ~20-30%). Crossover around 10/19-10/21. Can't separate the
+  effect of Play auto-update, the Play Console recovery prompt and the web
+  dialog.
+- **Web update dialog (deployed ~10/19):** `update_prompt_shown` 16 events /
+  15 users since 10/19 (1.2.0: 15 events / 14 users; 1.1.7: 1), 1:1 with
+  `app_initalized` on 1.2.0, i.e. it fires on every launch as designed.
+  `update_prompt_accepted`: 1 user (~7%). Low tap-through but it also
+  repeats each launch; no "dismissed" event exists.
+- **`app_check_status` (Android only; one web user generates ~54 events,
+  ignore):** Play Integrity / 1.3.1 (26): 38 ready + 4 failed = 42 events,
+  21 users, **1 user failed** (all 4 events "Too many attempts." = native
+  backoff after an earlier failure; likely a non-Play/local build) ->
+  ~5% of users. reCAPTCHA / 1.2.0 (23): 6 ready + 2 failed (both
+  `appCheck/throttled`), 7 users -> 2 failed (~29%). Small samples but the
+  direction matches the 8/18-10/07 picture (reCAPTCHA ~40% throttled on
+  first launch; Play Integrity ~0 for Play installs).
+- **Coverage is still ~1/3** of app loads (`app_initalized` vs
+  `app_check_status`), expected to stay low because logged-out sessions
+  (48 `first_open` installs since 10/19 vs 15 real signups) never emit it.
+- **Health:** Firestore `app_errors` holds 2 entries (both throttled,
+  10/19 14:26 ET), nothing newer; GA `app_error` 9 events / 4 users since
+  10/19. 15 signups since 10/19, **0 orphaned registrations**. No
+  email-shaped text in GA `error` at any date (deletion request A has
+  run). `localhost` web traffic dropped to 1 user / 9 events since 10/20
+  (e2e analytics gate working; remaining is the dev server).
+- **10/19 "spike" was the e2e suite** (136 `localhost` web users; gate
+  added 10/19 20:53 in efb16f60). Earlier localhost bursts 9/23 and 9/28.
+
+**Still open:** Firestore re-enforcement (needs ~all users on 1.3.x or a
+hard minimum-version gate, plus reverting the concurrent
+`appCheckTokenReady()` in `UserService.initializeUserSession()`); optional
+dev-server analytics gate (`!environment.useEmulators`); a `dismissed`
+event for the update dialog if tap-through matters.
+
 ## High-level architecture
 
 **Keep `ReCaptchaEnterpriseProvider` for everything else** (web browsers,
