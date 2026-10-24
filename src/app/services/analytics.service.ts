@@ -15,12 +15,16 @@ export class AnalyticsService {
   protected readonly auth = inject(getAuth);
   protected readonly fns = inject(getFunctions);
 
-  // False on emulator builds (e.g. the e2e config's demo project): the web
-  // Analytics SDK would otherwise call the real Firebase Installations and
-  // Google Analytics endpoints with the real app credentials. Omitting
-  // measurementId in resolveFirebaseOptions is not enough - the SDK still
-  // fetches its config by appId/apiKey.
-  protected gaEnabled = environment.emulators.projectId === null;
+  // False on emulator builds - both the e2e config's demo project
+  // (emulators.projectId set) and the plain dev build (useEmulators, e.g.
+  // `pnpm start`): the web Analytics SDK would otherwise call the real
+  // Firebase Installations and Google Analytics endpoints with the real app
+  // credentials, and local test/dev sessions show up as production users
+  // (a 10/19 e2e run looked like a 136-user spike). Omitting measurementId
+  // in resolveFirebaseOptions is not enough - the SDK still fetches its
+  // config by appId/apiKey.
+  protected gaEnabled =
+    environment.emulators.projectId === null && !environment.useEmulators;
 
   private readonly pendingSnapshotErrors = new Map<
     string,
