@@ -20,10 +20,28 @@ describe('AnalyticsService', () => {
       ],
     });
     service = TestBed.inject(AnalyticsService);
+    // Unit tests build with the dev environment (useEmulators = true), which
+    // disables GA by default; these specs exercise the enabled path.
+    (service as any).gaEnabled = true;
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it('should have GA disabled by default in the dev environment (useEmulators)', () => {
+    // beforeEach forces the instance on, so build a fresh one to see the
+    // real default for this (dev) environment.
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        AnalyticsService,
+        { provide: authModule.getAuth, useValue: { currentUser: null } },
+        { provide: functionsModule.getFunctions, useValue: {} },
+      ],
+    });
+    const fresh = TestBed.inject(AnalyticsService);
+    expect((fresh as any).gaEnabled).toBe(false);
   });
 
   it('should call FirebaseAnalytics.logEvent with the event name and params', async () => {
