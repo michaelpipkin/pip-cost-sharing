@@ -1,6 +1,12 @@
 # Orphaned Registrations Investigation — Handoff
 
-Status as of 2026-08-25: **Just opened, not yet root-caused.** Written up
+Status as of 2026-10-24: **the server-side fix (step 2) never worked in
+production until 2026-10-24.** `createUserProfileOnSignUp` failed on every
+run because its service account had no Firestore role; the owner granted
+it on 2026-10-24. Waiting for the first real sign-up to log
+`status: 'ok'`. See "Finding (2026-10-24)" below.
+
+Original status, 2026-08-25: **Just opened, not yet root-caused.** Written up
 so a fresh session can pick this up with no other context - deliberately
 kept separate from [[app-check-enforcement-followup.md]] because the
 evidence below rules out App Check as the cause, even though this bug
@@ -145,7 +151,9 @@ pattern for this exact problem:
   Auth account is created, independent of the client entirely. Writes
   the same default-fields doc `UserService` used to create, via
   `set(..., { merge: true })` so it stays idempotent if it ever runs
-  twice for the same uid.
+  twice for the same uid. (Since B14, 2026-10-22, it uses a transaction
+  that fills in only missing fields and stores the email only once it is
+  verified.)
 - **Client change** in `UserService.initializeUserSession()`: for a
   brand-new account (no existing doc), the client now calls the new
   `waitForServerCreatedUser()` - an `onSnapshot` listener that resolves
@@ -186,6 +194,52 @@ actually drops for new registrations - if it doesn't, something in this
 chain (trigger not deployed yet, trigger erroring, wait timeout too
 short) needs a closer look.
 
+## Finding (2026-10-24): the trigger never succeeded in production
+
+Found from the owner's post-release error query. Every
+`createUserProfileOnSignUp` run in the retained logs (30 days, back to
+2026-09-24) ended `finished with status: 'error'`, with `Error: 7
+PERMISSION_DENIED: Missing or insufficient permissions.` on the
+transaction's first read. It almost certainly failed on every run since it
+shipped on 2026-08-25.
+
+- **Cause: IAM, not rules.** The Admin SDK skips security rules; the
+  message is the same text a rules denial shows. As a `firebase-functions/v1`
+  (Gen1) function, the trigger runs as the App Engine default account,
+  `pip-cost-sharing@appspot.gserviceaccount.com`, which held only
+  `roles/iam.serviceAccountUser` and `roles/secretmanager.secretAccessor`.
+  Every v2 function runs as `175229019851-compute@developer.gserviceaccount.com`
+  (`roles/editor`, `roles/datastore.user`, ...), which is why nothing else
+  failed. The audit log shows no role removed from the App Engine account
+  in 400 days, so it most likely never had Firestore access.
+- **Why nobody noticed.** The client's 8 s fallback
+  (`createUserIfNotExists()`) created every profile, so sign-up looked
+  fine. That means the original exposure (a tab closed before the fallback
+  runs) stayed open the whole time. Examples on 2026-10-23: one profile
+  created about 2 minutes after sign-up, another (a Google sign-in) about
+  2 hours later, on the user's next visit. Since the Phase 3 release
+  (PR #724) the trigger also writes the `verifiedEmails` index entry; that
+  never ran either (the trigger rethrows first), and `linkInvitedMembers`
+  on the Groups page wrote it instead.
+- **Accounts left without a profile:** `orphaned-registrations` (7 days)
+  found 2, created 2026-10-17 and 2026-10-19, both verified. The owner
+  backfilled both on 2026-10-24 from Admin > Reports > Orphaned
+  Registrations (`backfillOrphanedRegistrations`, a v2 callable, so it
+  could write).
+- **Fix (owner, 2026-10-24):** granted `roles/datastore.user` to the App
+  Engine account. No code change or deploy. Confirmed in the IAM policy;
+  the first real sign-up afterwards should log `status: 'ok'`.
+- **Monitoring (owner, 2026-10-24):** a log-based alert, "Cloud Function
+  errors", emails on `severity>=ERROR` for both Gen1 (`cloud_function`)
+  and v2 (`cloud_run_revision` with `goog-managed-by=cloudfunctions`)
+  functions, at most once an hour. The week before the fix had 23 such
+  errors, all this one, so the query needs no exclusions. It was tested
+  with a synthetic `alert-test` ERROR entry (function_name `alertTest`)
+  written through the Logging API; ignore that entry in log reviews.
+
+If the trigger is ever replaced or another Gen1 function is added, check
+the App Engine account's roles first.
+
 ## Tools already built for this (reusable, read-only, safe)
 
 Both live in `scripts/db/queries/`, run via `pnpm query <name>`,
@@ -202,6 +256,13 @@ shell where gcloud itself may not):
   registration.
 
 ## Where to go next
+
+First, confirm the 2026-10-24 IAM fix: a real sign-up logs
+`status: 'ok'` (and the error alert stays quiet). Most of the ideas below
+date from before the trigger was known to be failing; with it working,
+the client-side window should be closed for the common case. A manual
+repair also exists now: Admin > Reports > Orphaned Registrations >
+Backfill (all accounts, not just the last 7 days).
 
 Ideas not yet tried, roughly in order of effort:
 
