@@ -11,19 +11,21 @@ import { isSingleEmailAddress } from './email-builders';
 // different address for a group (owner decision, 2026-10-22). That is safe
 // because a LINKED member's email is always an address the linked user has
 // proven they own (firestore.rules, groups/{gid}/members/{mid}):
-//  - it equals the user's profile email (their verified sign-in address)
-//    when an admin links the doc, or when the member syncs it themself;
+//  - it was linked on the server through the verified-address index
+//    (member-linking.ts, from syncMemberEmailLower and linkInvitedMembers),
+//    which holds only addresses their owner proved;
+//  - or it is the creator's own row in addGroup, carrying their verified
+//    sign-in address or profile email (the only link a client may write);
 //  - or it was confirmed through a link mailed to it
-//    (member-email.ts confirmMemberEmailChange);
-//  - or linkInvitedMembers linked it through the caller's verified address.
+//    (member-email.ts confirmMemberEmailChange), or set to their verified
+//    address by updateMemberEmails.
 // An unlinked member's email is whatever an admin typed, so unlinked
 // members are never mailed here (invites have their own capped path,
 // sendGroupInvite).
 // ---------------------------------------------------------------------------
 
 export type MemberRecipient =
-  | { result: 'sent'; to: string }
-  | { result: 'not_registered' | 'opted_out' };
+  { result: 'sent'; to: string } | { result: 'not_registered' | 'opted_out' };
 
 /**
  * Whether the member's userRef names a users/{uid} doc. Rules require it for

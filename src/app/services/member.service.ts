@@ -15,11 +15,9 @@ import {
   collection,
   collectionGroup,
   deleteDoc,
-  doc,
   documentId,
   DocumentData,
   DocumentReference,
-  getDoc,
   getDocs,
   getFirestore,
   limit,
@@ -247,43 +245,20 @@ export class MemberService implements IMemberService {
     groupId: string,
     member: Partial<Member>
   ): Promise<DocumentReference<Member>> {
-    // Only check for duplicate email and attempt user matching when an email is provided.
-    // A blank email means the member is not intended to sign in to the app.
+    // Only check for a duplicate email when one is provided. A blank email
+    // means the member is not intended to sign in to the app. The row is
+    // created unlinked: the syncMemberEmailLower trigger links it to the
+    // account that has proven this address, so the client never looks at
+    // (or sets) a userRef.
     if (member.email) {
-      const emailLower = this.#normalizeEmail(member.email);
       const membersQuery = query(
         collection(this.fs, `groups/${groupId}/members`),
-        where('emailLower', '==', emailLower)
+        where('emailLower', '==', this.#normalizeEmail(member.email))
       );
       const membersSnapshot = await getDocs(membersQuery);
 
       if (!membersSnapshot.empty) {
         throw new DuplicateMemberEmailError();
-      }
-
-      // Linking by users.emailLower is safe only because a profile email is
-      // always a VERIFIED address of that account: firestore.rules accepts a
-      // client-written email/emailLower only when it is '' or the caller's
-      // verified token email, and the sign-up trigger and session sync store
-      // nothing until the address is verified (Plan 4 B14). Loosen either
-      // and this lookup lets anyone claim someone else's invite.
-      const userQuery = query(
-        collection(this.fs, 'users'),
-        where('emailLower', '==', emailLower)
-      );
-      const userSnapshot = await getDocs(userQuery);
-      if (userSnapshot.size === 1) {
-        member.userRef = userSnapshot.docs[0]!.ref as DocumentReference<User>; // NOSONAR
-      } else if (userSnapshot.size > 1) {
-        // Multiple accounts share this email (a pre-existing duplicate
-        // account situation, not something this lookup created) - leave
-        // the member unlinked rather than guessing which account is right.
-        this.analytics.logError(
-          'Member Service',
-          'addMemberToGroup',
-          'Ambiguous email match - multiple user accounts share this email, skipped auto-link',
-          emailLower
-        );
       }
     }
 
@@ -315,68 +290,6 @@ export class MemberService implements IMemberService {
     await updateDoc(memberRef, changes);
   }
 
-  async updateMemberWithUserMatching(
-    memberRef: DocumentReference<Member>,
-    changes: Partial<Member>,
-    currentUserRef: DocumentReference<User> | null,
-    currentEmail: string
-  ): Promise<void> {
-    const emailChanging =
-      !!changes.email &&
-      this.#normalizeEmail(changes.email) !==
-        this.#normalizeEmail(currentEmail);
-    // The callables' duplicate check (functions/src/member-email.ts
-    // DUPLICATE_MEMBER_EMAIL), for an admin's edit of an unlinked member.
-    if (emailChanging) {
-      await this.#assertNoOtherMemberHas(memberRef, changes.email!);
-    }
-    // Only search for user if member is not already linked and email is changing
-    if (!currentUserRef && emailChanging) {
-      // Safe only because profile emails are verified-only (see
-      // addMemberToGroup).
-      const userQuery = query(
-        collection(this.fs, 'users'),
-        where('emailLower', '==', this.#normalizeEmail(changes.email!))
-      );
-      const userSnapshot = await getDocs(userQuery);
-      if (userSnapshot.size === 1) {
-        changes.userRef = userSnapshot.docs[0]!.ref as DocumentReference<User>; // NOSONAR
-      } else if (userSnapshot.size > 1) {
-        // Multiple accounts share this email (a pre-existing duplicate
-        // account situation, not something this lookup created) - leave
-        // the member unlinked rather than guessing which account is right.
-        this.analytics.logError(
-          'Member Service',
-          'updateMemberWithUserMatching',
-          'Ambiguous email match - multiple user accounts share this email, skipped auto-link',
-          this.#normalizeEmail(changes.email!)
-        );
-      }
-    }
-
-    await updateDoc(memberRef, changes);
-  }
-
-  /**
-   * Refuses (DuplicateMemberEmailError) an address another member of the same
-   * group already has, compared case-insensitively through emailLower.
-   */
-  async #assertNoOtherMemberHas(
-    memberRef: DocumentReference<Member>,
-    email: string
-  ): Promise<void> {
-    const clash = await getDocs(
-      query(
-        memberRef.parent,
-        where('emailLower', '==', this.#normalizeEmail(email)),
-        limit(2)
-      )
-    );
-    if (clash.docs.some((d) => d.id !== memberRef.id)) {
-      throw new DuplicateMemberEmailError();
-    }
-  }
-
   async removeMemberFromGroup(
     groupId: string,
     memberRef: DocumentReference<Member>
@@ -394,31 +307,22 @@ export class MemberService implements IMemberService {
       throw new Error('This member has existing splits and cannot be deleted.');
     }
 
-    const memberSnap = await getDoc(memberRef);
-    const removedUserRef = memberSnap.data()?.userRef;
-
+    // The removed user's default group is cleared by syncGroupMemberUids when
+    // their uid drops out of the group's member arrays.
     await deleteDoc(memberRef);
-
-    if (removedUserRef) {
-      const groupRef = doc(this.fs, `groups/${groupId}`);
-      const removedUserSnap = await getDoc(removedUserRef);
-      const removedDefault = removedUserSnap.data()?.defaultGroupRef;
-      if (removedDefault?.eq(groupRef)) {
-        await updateDoc(removedUserRef, { defaultGroupRef: null });
-      }
-    }
   }
 
   /**
-   * Returns whether the member doc was deleted outright (no historical
-   * splits) versus kept and re-tagged left/inactive (has history) - callers
-   * need this to know whether the group should disappear entirely from
-   * their group list or just be re-tagged as a rejoin candidate.
+   * Marks the caller's own member row as left, splits or not: the row is
+   * never deleted. It keeps the group in the caller's rejoin list, and it
+   * stops an admin re-inviting them (no server link path links a user into
+   * a group where they already have a row, and the rules let no one else
+   * reopen, unlink or delete a left row).
    */
   async leaveGroup(
     groupId: string,
     memberRef: DocumentReference<Member>
-  ): Promise<{ deleted: boolean }> {
+  ): Promise<void> {
     const userRef = this.userStore.user()!.ref!;
     const c = collection(this.fs, `groups/${groupId}/members`);
     const q = query(c, where('groupAdmin', '==', true));
@@ -429,29 +333,12 @@ export class MemberService implements IMemberService {
       );
     }
 
-    const splits = await getDocs(
-      collection(this.fs, `groups/${groupId}/splits`)
-    );
-    const memberSplit = splits.docs.some(
-      (doc) =>
-        doc.data().owedByMemberRef.eq(memberRef) ||
-        doc.data().paidByMemberRef.eq(memberRef)
-    );
-
-    let deleted: boolean;
-    if (memberSplit) {
-      await updateDoc(memberRef, {
-        active: false,
-        leftGroup: true,
-        groupAdmin: false,
-      });
-      deleted = false;
-    } else {
-      await deleteDoc(memberRef);
-      deleted = true;
-    }
+    await updateDoc(memberRef, {
+      active: false,
+      leftGroup: true,
+      groupAdmin: false,
+    });
     await updateDoc(userRef, { defaultGroupRef: null });
-    return { deleted };
   }
 
   // Self-service counterpart to leaveGroup(): the member's own action to

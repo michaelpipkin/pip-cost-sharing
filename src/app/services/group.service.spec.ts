@@ -162,6 +162,7 @@ describe('GroupService', () => {
     } as any);
     vi.spyOn(firestoreModule, 'getDocs').mockResolvedValue(makeSnap([]) as any);
     vi.spyOn(firestoreModule, 'setDoc').mockResolvedValue(undefined as any);
+    vi.spyOn(firestoreModule, 'updateDoc').mockResolvedValue(undefined as any);
     vi.spyOn(firestoreModule, 'deleteDoc').mockResolvedValue(undefined as any);
 
     localStorage.clear();
@@ -281,31 +282,36 @@ describe('GroupService', () => {
 
       await service.updateGroup(groupRef, { name: 'New Name' });
 
-      expect(mockBatch.update).toHaveBeenCalledWith(groupRef, {
+      expect(firestoreModule.updateDoc).toHaveBeenCalledWith(groupRef, {
         name: 'New Name',
       });
     });
 
-    it('should clear defaultGroupRef for all users when deactivating', async () => {
+    // Clearing everyone's default is the clearDefaultsOnGroupDeactivate
+    // trigger's job; the client no longer reads or writes other users' docs.
+    it.each([
+      ['deactivating', { active: false }],
+      ['archiving', { archived: true, active: false }],
+    ])('should update only the group when %s', async (_label, changes) => {
       const groupRef = { id: 'group-1' } as any;
-      const userDoc = { ref: { id: 'user-1' } };
-      vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
-        makeSnap([userDoc]) as any
+      const batchSpy = vi.spyOn(firestoreModule, 'writeBatch');
+
+      await service.updateGroup(groupRef, changes);
+
+      expect(firestoreModule.updateDoc).toHaveBeenCalledOnce();
+      expect(firestoreModule.updateDoc).toHaveBeenCalledWith(groupRef, changes);
+      expect(firestoreModule.getDocs).not.toHaveBeenCalled();
+      expect(firestoreModule.collection).not.toHaveBeenCalledWith(
+        mockFs,
+        'users'
       );
-
-      await service.updateGroup(groupRef, { active: false });
-
-      expect(mockBatch.update).toHaveBeenCalledWith(userDoc.ref, {
-        defaultGroupRef: null,
-      });
+      expect(batchSpy).not.toHaveBeenCalled();
+      expect(mockBatch.update).not.toHaveBeenCalled();
     });
 
     it('should clear current group from store when deactivating the active group', async () => {
       const groupRef = { id: 'group-1' } as any;
       currentGroupSignal.set({ id: 'group-1' });
-      vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
-        makeSnap([]) as any
-      );
 
       await service.updateGroup(groupRef, { active: false });
 
@@ -315,9 +321,6 @@ describe('GroupService', () => {
     it('should not clear current group when deactivating a different group', async () => {
       const groupRef = { id: 'group-2' } as any;
       currentGroupSignal.set({ id: 'group-1' });
-      vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
-        makeSnap([]) as any
-      );
 
       await service.updateGroup(groupRef, { active: false });
 
@@ -344,7 +347,7 @@ describe('GroupService', () => {
 
       expect(firestoreModule.getDocs).not.toHaveBeenCalled();
       expect(mockGroupStore.clearCurrentGroup).not.toHaveBeenCalled();
-      expect(mockBatch.update).toHaveBeenCalledWith(groupRef, {
+      expect(firestoreModule.updateDoc).toHaveBeenCalledWith(groupRef, {
         archived: false,
       });
     });
@@ -550,6 +553,89 @@ describe('GroupService', () => {
           defaultGroupRef: null,
         });
         expect(mockGroupStore.setCurrentGroup).not.toHaveBeenCalled();
+      });
+
+      it('self-heals a stale defaultGroupRef pointing at an inactive group while the user is still an active member', async () => {
+        // The clearDefaultsOnGroupDeactivate trigger clears every default
+        // when a group is deactivated; this heals one it has not reached yet
+        // (or one set since), so the user is not sent back to a dead group.
+        const groupRef = { id: 'group-1', eq: (o: any) => o?.id === 'group-1' };
+        const staleUser = { ...user, defaultGroupRef: groupRef };
+        userSignal.set(staleUser);
+        const callbacks = captureSnapshotCallbacks();
+        // Were the default kept, selecting it would succeed.
+        vi.spyOn(firestoreModule, 'getDoc').mockResolvedValue(
+          groupDocSnap('group-1')
+        );
+
+        await service.getUserGroups(staleUser);
+        await callbacks[0]!(
+          makeSnap([
+            {
+              ref: { parent: { parent: { id: 'group-1' } } },
+              data: () => ({ active: true, groupAdmin: false }),
+            },
+          ])
+        );
+        await callbacks[1]!(
+          makeSnap([
+            {
+              id: 'group-1',
+              data: () => ({
+                name: 'Test Group',
+                active: false,
+                archived: false,
+              }),
+              ref: groupRef,
+            },
+          ])
+        );
+
+        expect(firestoreModule.setDoc).toHaveBeenCalledWith(
+          staleUser.ref,
+          { defaultGroupRef: null },
+          { merge: true }
+        );
+        expect(mockUserStore.updateUser).toHaveBeenCalledWith({
+          defaultGroupRef: null,
+        });
+        expect(mockGroupStore.setCurrentGroup).not.toHaveBeenCalled();
+      });
+
+      it('keeps a defaultGroupRef pointing at an active group the user is an active member of', async () => {
+        const groupRef = { id: 'group-1', eq: (o: any) => o?.id === 'group-1' };
+        const goodUser = { ...user, defaultGroupRef: groupRef };
+        userSignal.set(goodUser);
+        const callbacks = captureSnapshotCallbacks();
+        vi.spyOn(firestoreModule, 'getDoc').mockResolvedValue(
+          groupDocSnap('group-1')
+        );
+
+        await service.getUserGroups(goodUser);
+        await callbacks[0]!(
+          makeSnap([
+            {
+              ref: { parent: { parent: { id: 'group-1' } } },
+              data: () => ({ active: true, groupAdmin: false }),
+            },
+          ])
+        );
+        await callbacks[1]!(
+          makeSnap([
+            {
+              id: 'group-1',
+              data: () => ({ name: 'Test Group', active: true, archived: false }),
+              ref: groupRef,
+            },
+          ])
+        );
+
+        expect(mockGroupStore.setCurrentGroup).toHaveBeenCalled();
+        expect(firestoreModule.setDoc).not.toHaveBeenCalledWith(
+          goodUser.ref,
+          { defaultGroupRef: null },
+          expect.anything()
+        );
       });
 
       it('clears per-group listeners and stores when no group ends up selected', async () => {
@@ -1105,7 +1191,9 @@ describe('GroupService', () => {
     });
 
     it('only after the deactivation is saved', async () => {
-      mockBatch.commit.mockRejectedValueOnce(new Error('permission-denied'));
+      vi.spyOn(firestoreModule, 'updateDoc').mockRejectedValueOnce(
+        new Error('permission-denied')
+      );
 
       await expect(
         service.updateGroup(groupRef('group-1'), { active: false })
@@ -1125,11 +1213,47 @@ describe('GroupService', () => {
       expectListenersStoppedAndStoresEmpty();
     });
 
-    it('when the user leaves it (clearCurrentGroup)', () => {
+    it('when it is cleared outright (clearCurrentGroup)', () => {
       service.clearCurrentGroup();
 
       expectListenersStoppedAndStoresEmpty();
       expect(mockGroupStore.clearCurrentGroup).toHaveBeenCalledWith(false);
+    });
+
+    // Leaving fires the members listener first, and its auto-select may
+    // already be loading the replacement group. Cancelling that load (as
+    // clearCurrentGroup does) left the app with no group selected.
+    it('when the user leaves it, without cancelling the replacement already loading (releaseLeftGroup)', async () => {
+      const load = deferred<any>();
+      vi.spyOn(firestoreModule, 'getDoc').mockReturnValueOnce(load.promise);
+      const pick = service.getGroup(groupRef('group-2'), userRef);
+
+      service.releaseLeftGroup('group-1');
+
+      listenerServices().forEach((s) =>
+        expect(s.stopListening).toHaveBeenCalled()
+      );
+      expect(TestBed.inject(CategoryStore).groupCategories()).toEqual([]);
+      expect(TestBed.inject(MemberStore).groupMembers()).toEqual([]);
+      expect(mockGroupStore.clearCurrentGroup).not.toHaveBeenCalled();
+
+      load.resolve(groupDocSnap('group-2'));
+      await pick;
+
+      expect(currentGroupSignal()?.id).toBe('group-2');
+      expect(mockCategoryService.getGroupCategories).toHaveBeenCalledWith(
+        'group-2'
+      );
+    });
+
+    it('but releaseLeftGroup leaves a replacement that is already selected alone', () => {
+      service.releaseLeftGroup('group-0');
+
+      expect(currentGroupSignal()?.id).toBe('group-1');
+      expect(mockCategoryService.stopListening).not.toHaveBeenCalled();
+      expect(TestBed.inject(CategoryStore).groupCategories()).toEqual([
+        { id: 'c1' },
+      ]);
     });
 
     it('when the selected group no longer exists', async () => {

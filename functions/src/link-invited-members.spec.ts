@@ -3,6 +3,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { getFirestore, type DocumentReference } from 'firebase-admin/firestore';
 import { describe, expect, it } from 'vitest';
 import { linkInvitedMembers, linkInvitedMembersInternal } from './index';
+import { ownerOf, upsertVerifiedEmail } from './verified-emails';
 
 const db = getFirestore();
 
@@ -119,6 +120,35 @@ describe('linkInvitedMembersInternal', () => {
     );
   });
 
+  it('does not link a re-invite into a group the caller left', async () => {
+    const address = `left-${randomUUID()}@example.com`;
+    const userRef = db.collection('users').doc();
+    const group = db.collection('groups').doc();
+    await group.collection('members').doc().set({
+      displayName: 'Me',
+      email: address,
+      emailLower: address,
+      active: false,
+      leftGroup: true,
+      groupAdmin: false,
+      userRef,
+    });
+    const reinvite = group.collection('members').doc();
+    await reinvite.set({
+      displayName: 'Me again',
+      email: address,
+      emailLower: address,
+      active: true,
+      groupAdmin: false,
+      userRef: null,
+    });
+
+    const result = await linkInvitedMembersInternal(userRef.id, address);
+
+    expect(result.membersLinked).toBe(0);
+    expect((await reinvite.get()).data()?.['userRef']).toBeNull();
+  });
+
   it('links only one of two invited rows in the same group', async () => {
     const address = `two-${randomUUID()}@example.com`;
     const userRef = db.collection('users').doc();
@@ -142,6 +172,63 @@ describe('linkInvitedMembersInternal', () => {
       await Promise.all(rows.map(async (ref) => (await ref.get()).data()?.['userRef']))
     ).filter((ref) => ref !== null);
     expect(linked).toHaveLength(1);
+  });
+
+  it("records the caller's login address in the index", async () => {
+    const address = `Login-${randomUUID()}@Example.com`;
+    const uid = `u-${randomUUID()}`;
+
+    await linkInvitedMembersInternal(uid, address);
+
+    expect(await ownerOf(db, address)).toBe(uid);
+  });
+
+  it('links a row invited under a secondary indexed address', async () => {
+    const login = `login-${randomUUID()}@example.com`;
+    const secondary = `secondary-${randomUUID()}@example.com`;
+    const uid = `u-${randomUUID()}`;
+    await upsertVerifiedEmail(db, secondary, uid, 'group-confirm');
+    const memberRef = db.collection('groups').doc().collection('members').doc();
+    await memberRef.set({
+      displayName: 'Invitee',
+      email: secondary,
+      emailLower: secondary,
+      active: true,
+      groupAdmin: false,
+      userRef: null,
+    });
+
+    const result = await linkInvitedMembersInternal(uid, login);
+
+    expect(result.membersLinked).toBe(1);
+    expect((await memberRef.get()).data()?.['userRef']?.id).toBe(uid);
+  });
+
+  // The in-query takes at most 30 values, so 31 addresses need two chunks.
+  it('links across more than 30 addresses', async () => {
+    const uid = `u-${randomUUID()}`;
+    const addresses = Array.from(
+      { length: 31 },
+      (_, i) => `many-${i}-${randomUUID()}@example.com`
+    );
+    for (const address of addresses) {
+      await upsertVerifiedEmail(db, address, uid, 'group-confirm');
+    }
+    const last = addresses[30]!;
+    const memberRef = db.collection('groups').doc().collection('members').doc();
+    await memberRef.set({
+      displayName: 'Invitee',
+      email: last,
+      emailLower: last,
+      active: true,
+      groupAdmin: false,
+      userRef: null,
+    });
+
+    const result = await linkInvitedMembersInternal(uid, addresses[0]!);
+
+    expect(result.membersLinked).toBe(1);
+    expect((await memberRef.get()).data()?.['userRef']?.id).toBe(uid);
   });
 
   it('returns zero when no member matches the email', async () => {

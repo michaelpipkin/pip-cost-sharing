@@ -12,13 +12,13 @@ import type { SeedDataset, SeedGroup, SeedMember, SeedUser } from '../types';
  * test ends with its member back in the seeded state (each starts by
  * resetting it with the Admin SDK), so all of them repeat fine:
  * - member-rules-admin: the group admin. Promotes and demotes "Promotee",
- *   and recreates "Deleter" after the self-delete test.
+ *   and tries to reopen, promote, unlink and delete "Frozen".
  * - member-rules-promoter: a plain member who tries to make themselves
  *   admin and to change their own userRef.
  * - member-rules-promotee: a plain member the admin promotes.
- * - member-rules-leaver: leaves (the update leaveGroup makes when the
- *   member has splits) and rejoins.
- * - member-rules-deleter: leaves with no splits (deletes their own doc).
+ * - member-rules-leaver: leaves (the update leaveGroup makes) and rejoins.
+ * - member-rules-deleter: tries to delete their own doc (denied: leaving
+ *   keeps it), leaves, and tries again.
  * - member-rules-emailer: tries to change their own member email directly
  *   (Account > Profile's Sync used to; it is now the updateMemberEmails
  *   callable).
@@ -26,6 +26,8 @@ import type { SeedDataset, SeedGroup, SeedMember, SeedUser } from '../types';
  *   member (not leftGroup); tries to reactivate themselves.
  * - member-rules-left: seeded as having left (leftGroup); tries to rejoin as
  *   an admin, then rejoins and leaves again.
+ * - member-rules-frozen: seeded as having left (leftGroup); the admin tries
+ *   to reopen, promote, unlink and delete the row, and renames it.
  */
 
 const SPEC = 'spec:e2e/infra/member-rules.spec.ts' as const;
@@ -51,6 +53,7 @@ const deleter = seedUser('deleter');
 const emailer = seedUser('emailer');
 const deactivated = seedUser('deactivated');
 const left = seedUser('left');
+const frozen = seedUser('frozen');
 
 function memberOf(
   user: SeedUser,
@@ -74,6 +77,7 @@ const members = {
   emailer: memberOf(emailer),
   deactivated: memberOf(deactivated, { active: false }),
   left: memberOf(left, { active: false, leftGroup: true }),
+  frozen: memberOf(frozen, { active: false, leftGroup: true }),
 } as const;
 
 const group: SeedGroup = {
@@ -94,6 +98,7 @@ export const MEMBER_RULES = {
     emailer,
     deactivated,
     left,
+    frozen,
   },
   members,
   group,

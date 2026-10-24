@@ -21,7 +21,8 @@ import type { SeedDataset, SeedGroup, SeedUser } from '../types';
  *     members-removed never signs in. One-shot per seeding.
  * - members-leaver in "Members – Leave" (default) as Lee, a non-admin. The
  *   group's admin is Dana, a placeholder member, so Lee is not the only
- *   admin. Lee has no splits, so leaving deletes their member doc. Lee's
+ *   admin. Lee has no splits, and leaving still keeps their member doc
+ *   (marked left), which is what stops a re-invite. Lee's
  *   home group is "Members – Leave Home" (Lee is its admin), which the app
  *   falls back to after leaving.
  */

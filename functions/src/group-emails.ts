@@ -6,7 +6,7 @@ import {
 } from 'firebase-admin/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import type { CallableRequest } from 'firebase-functions/v2/https';
-import { callableAppCheck } from './common';
+import { callableAppCheck, isDocId } from './common';
 import {
   buildEmailHtml,
   buildPaymentMethodLines,
@@ -98,21 +98,6 @@ function invalid(message: string): never {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-/**
- * A string usable as a single Firestore document id: no `/`, and not one of
- * the reserved ids (`.`, `..`, `__x__`) the backend would reject as an
- * `internal` error.
- */
-function isDocId(value: unknown): value is string {
-  return (
-    typeof value === 'string' &&
-    value.length > 0 &&
-    value.length <= 1500 &&
-    !value.includes('/') &&
-    !/^\.\.?$|^__.*__$/.test(value)
-  );
 }
 
 function requireDocId(value: unknown, field: string): string {

@@ -16,6 +16,7 @@ import {
   type AdminReportResult,
 } from './admin-reports';
 import { makeGroup, makeMember, uniqueId } from './test-fixtures';
+import { upsertVerifiedEmail } from './verified-emails';
 
 // The builders count across the whole shared emulator, so the report-level
 // tests either take a report before and after creating their own data and
@@ -455,40 +456,43 @@ describe('backfillOrphanedRegistrationsInternal', () => {
 });
 
 describe('repairOrphanedMembersInternal: what it skips', () => {
-  it('links only the member that still has no user and matches exactly one', async () => {
+  it('links only the member that still has no user and has an index owner', async () => {
     const group = await makeGroup();
     const tag = uniqueId('skip');
     const single = `${tag}-single@repair.test`;
-    const shared = `${tag}-shared@repair.test`;
-    const singleUser = db.collection('users').doc(uniqueId('u'));
-    await singleUser.set({ emailLower: single });
-    await db.collection('users').doc(uniqueId('u')).set({ emailLower: shared });
-    await db.collection('users').doc(uniqueId('u')).set({ emailLower: shared });
+    const unowned = `${tag}-unowned@repair.test`;
+    const owner = uniqueId('owner');
+    await upsertVerifiedEmail(db, single, owner, 'login');
 
     const linkable = await makeMember(group, { email: single.toUpperCase() });
     const alreadyLinked = await makeMember(group, {
       email: single,
       userRef: db.collection('users').doc(uniqueId('other')),
     });
-    const ambiguous = await makeMember(group, { email: shared });
+    const noOwner = await makeMember(group, { email: unowned });
     const placeholder = await makeMember(group, { email: '' });
+    const blank = await makeMember(group, { email: '   ' });
     const noEmailField = await makeMember(group);
     const missing = group.collection('members').doc(uniqueId('gone'));
 
     const result = await repairOrphanedMembersInternal(db, [
       linkable.path,
       alreadyLinked.path,
-      ambiguous.path,
+      noOwner.path,
       placeholder.path,
+      blank.path,
       noEmailField.path,
       missing.path,
     ]);
 
     expect(result).toEqual({ linkedCount: 1 });
-    expect((await linkable.get()).data()?.['userRef'].path).toBe(singleUser.path);
-    expect((await alreadyLinked.get()).data()?.['userRef'].path).not.toBe(singleUser.path);
-    expect((await ambiguous.get()).data()?.['userRef']).toBeNull();
+    expect((await linkable.get()).data()?.['userRef'].path).toBe(`users/${owner}`);
+    expect((await alreadyLinked.get()).data()?.['userRef'].path).not.toBe(
+      `users/${owner}`
+    );
+    expect((await noOwner.get()).data()?.['userRef']).toBeNull();
     expect((await placeholder.get()).data()?.['userRef']).toBeNull();
+    expect((await blank.get()).data()?.['userRef']).toBeNull();
     expect((await noEmailField.get()).data()?.['userRef']).toBeNull();
     expect((await missing.get()).exists).toBe(false);
   });
@@ -505,7 +509,7 @@ describe('repairOrphanedMembersInternal: repeated paths', () => {
   // path is linked and counted once.
   it('counts a repeated member path once', async () => {
     const email = `${uniqueId('rdup')}@repair.test`;
-    await db.collection('users').doc(uniqueId('u')).set({ emailLower: email });
+    await upsertVerifiedEmail(db, email, uniqueId('owner'), 'login');
     const member = await makeMember(await makeGroup(), { email });
 
     const result = await repairOrphanedMembersInternal(db, [member.path, member.path]);

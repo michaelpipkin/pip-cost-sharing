@@ -12,6 +12,7 @@ import { HISTORY_DATASET } from './history';
 import { INFRA_DATASET } from './infra';
 import { INVITES_DATASET } from './invites';
 import { MEMBER_EMAIL_DATASET } from './member-email';
+import { MEMBER_LINKING_DATASET } from './member-linking';
 import { MEMBER_EMAIL_RULES_DATASET } from './member-email-rules';
 import { MEMBER_RULES_DATASET } from './member-rules';
 import { MEMBERS_DATASET } from './members';
@@ -23,6 +24,7 @@ import { SHARED_DATASET } from './shared';
 import { SUMMARY_DATASET } from './summary';
 import { TOURS_DATASET } from './tours';
 import { USER_RULES_DATASET } from './user-rules';
+import { USERS_READ_RULES_DATASET } from './users-read-rules';
 
 /** Every dataset global setup seeds. Spec-owned datasets register here too. */
 export const ALL_DATASETS: SeedDataset[] = [
@@ -46,8 +48,10 @@ export const ALL_DATASETS: SeedDataset[] = [
   ADMIN_DATASET,
   EMAIL_RULES_DATASET,
   USER_RULES_DATASET,
+  USERS_READ_RULES_DATASET,
   MEMBER_RULES_DATASET,
   MEMBER_EMAIL_RULES_DATASET,
   MEMBER_EMAIL_DATASET,
+  MEMBER_LINKING_DATASET,
   GROUP_EMAIL_UPDATE_DATASET,
 ];

@@ -30,25 +30,32 @@ import {
  * user has proven they own, so group mail can go to `member.email`
  * (firestore.rules, groups/{gid}/members/{mid}). Checked through the real
  * web SDK on the test emulators:
- * - create: a doc with userRef set must carry that user's profile email
- *   (users/{uid}.email, compared case-insensitively, never empty). The I2
- *   attack (an admin linking a victim's userRef to an address of their
- *   choosing) is denied. The creator's own row (addGroup) may also carry ''
- *   or their verified sign-in address.
- * - userRef: an admin may set it from null (with the same email match) or
- *   clear it; X to Y is denied; a member never touches it.
+ * - create: a client may link only its own row (addGroup's creator), with
+ *   '', its verified sign-in address or its users doc's profile email
+ *   (which can lag the token). A row with another user's userRef is denied
+ *   whatever its email, including the I2 attack (a victim's userRef with an
+ *   address the admin chose): invited members are created unlinked and
+ *   linked on the server (syncMemberEmailLower, through the verified-address
+ *   index).
+ * - userRef: an admin may clear it (X to null); null to X and X to Y are
+ *   denied; a member never touches it.
  * - email on a linked doc: no client, the member or an admin. Changes go
  *   through the requestMemberEmailChange / updateMemberEmails callables
  *   (Admin SDK).
- * - email on an unlinked doc: admins, as before (edit-member's
- *   updateMemberWithUserMatching, which may link in the same write).
+ * - email on an unlinked doc: admins, with userRef staying null
+ *   (edit-member's updateMember; the trigger links the row if the address
+ *   has an owner).
  * - emailLower, when a client writes it, must equal email lowercased.
  * - the callable's token, rate-limit and recipient-cooldown collections,
- *   and the group-mail callables' per-caller limits, are server-only.
+ *   the group-mail callables' per-caller limits, the verified-address index
+ *   and the payment-lookup counters are server-only.
  * Every denial has a positive control on the same doc by the same user.
  */
 
 const { users, members, group } = MEMBER_EMAIL_RULES;
+
+/** mer-lagging's stored profile email, a step behind its Auth address. */
+const LAGGING_PROFILE_EMAIL = 'mer-lagging-previous@pipsplit.test';
 
 const memberDoc = (db: Firestore, id: string) =>
   doc(db, 'groups', group.key, 'members', id);
@@ -89,7 +96,7 @@ test.describe(
   'Firestore rules: a linked member email is always one its user owns',
   { tag: ['@members', '@groups', '@account'] },
   () => {
-    test('an admin creates a linked member only with the linked user’s profile email (I2)', async () => {
+    test('an admin creates another user’s member row only unlinked (I2)', async () => {
       await withDb(users.admin, async (db) => {
         const fresh = () => memberDoc(db, `m-mer-new-${randomUUID()}`);
         const through = await notDenied([
@@ -156,6 +163,19 @@ test.describe(
                 })
               ),
           ],
+          // add-member's old client-side auto-link: a client links no one
+          // but itself, even with the user's own profile email.
+          [
+            'victim userRef with the victim’s profile email',
+            () =>
+              setDoc(
+                fresh(),
+                newMember({
+                  userRef: userRef(db, users.victim),
+                  email: users.victim.email.toUpperCase(),
+                })
+              ),
+          ],
           // The creator's own-row allowance is for the caller only.
           [
             'victim userRef with the admin’s own address',
@@ -171,8 +191,9 @@ test.describe(
         ]);
         expect(through).toEqual([]);
 
-        // Positive controls: add-member's create, unlinked and auto-linked
-        // by the profile email (any casing), and a consistent emailLower.
+        // Positive controls: add-member's create, unlinked, with and without
+        // a consistent emailLower. The addresses have no owner in the
+        // verified-address index, so the trigger leaves the rows unlinked.
         const unlinkedEmail = randomEmail('unlinked');
         await expectAllowed(
           setDoc(fresh(), newMember({ userRef: null, email: unlinkedEmail })),
@@ -189,78 +210,101 @@ test.describe(
           ),
           'unlinked with emailLower'
         );
-        // Links only the dedicated runtime linkee (never victim), so the
-        // allowed create changes no other user's documented state.
-        await expectAllowed(
-          setDoc(
-            fresh(),
-            newMember({
-              userRef: userRef(db, users.runtimeLinkee),
-              email: users.runtimeLinkee.email.toUpperCase(),
-            })
-          ),
-          'linked by the profile email'
-        );
       });
     });
 
     test('a new group’s creator may add their own row (addGroup)', async () => {
+      // group.service addGroup: the group doc first, then the member and
+      // the Default category in one batch.
+      const addOwnRow = async (
+        db: Firestore,
+        user: SeedUser,
+        email: string
+      ) => {
+        const groupRef = doc(collection(db, 'groups'));
+        await setDoc(groupRef, {
+          name: `Member Email Rules – Created ${randomUUID().slice(0, 8)}`,
+          active: true,
+          archived: false,
+          autoAddMembers: false,
+          currencyCode: 'USD',
+          currencySymbol: '$',
+          decimalPlaces: 2,
+          memberUids: [user.uid],
+          activeMemberUids: [user.uid],
+          adminUids: [user.uid],
+        });
+        const batch = writeBatch(db);
+        batch.set(
+          doc(collection(db, `groups/${groupRef.id}/members`)),
+          newMember({ userRef: userRef(db, user), email, groupAdmin: true })
+        );
+        batch.set(doc(collection(db, `groups/${groupRef.id}/categories`)), {
+          name: 'Default',
+          active: true,
+        });
+        return batch.commit();
+      };
       await withDb(users.admin, async (db) => {
-        // group.service addGroup: the group doc first, then the member and
-        // the Default category in one batch.
-        const createGroup = async () => {
-          const groupRef = doc(collection(db, 'groups'));
-          await setDoc(groupRef, {
-            name: `Member Email Rules – Created ${randomUUID().slice(0, 8)}`,
-            active: true,
-            archived: false,
-            autoAddMembers: false,
-            currencyCode: 'USD',
-            currencySymbol: '$',
-            decimalPlaces: 2,
-            memberUids: [users.admin.uid],
-            activeMemberUids: [users.admin.uid],
-            adminUids: [users.admin.uid],
-          });
-          return groupRef;
-        };
-        const addOwnRow = async (email: string) => {
-          const groupRef = await createGroup();
-          const batch = writeBatch(db);
-          batch.set(
-            doc(collection(db, `groups/${groupRef.id}/members`)),
-            newMember({
-              userRef: userRef(db, users.admin),
-              email,
-              groupAdmin: true,
-            })
-          );
-          batch.set(doc(collection(db, `groups/${groupRef.id}/categories`)), {
-            name: 'Default',
-            active: true,
-          });
-          return batch.commit();
-        };
-        await expectAllowed(addOwnRow(users.admin.email), 'profile email');
+        await expectAllowed(
+          addOwnRow(db, users.admin, users.admin.email),
+          'profile email'
+        );
         // A legacy profile email that fails the single-address rule makes
         // add-group store '' instead.
-        await expectAllowed(addOwnRow(''), 'blank');
+        await expectAllowed(addOwnRow(db, users.admin, ''), 'blank');
         await expectDenied(
-          addOwnRow(randomEmail('creator')),
+          addOwnRow(db, users.admin, randomEmail('creator')),
           'another address'
+        );
+      });
+
+      // add-group copies the stored profile email, which can still hold the
+      // previous address after a login-email change (the account-action
+      // page writes the new one afterwards). The rules' get() of the
+      // caller's own users doc must accept it.
+      const { db: adminDb } = getSeedAdmin();
+      await adminDb
+        .doc(`users/${users.lagging.uid}`)
+        .update({ email: LAGGING_PROFILE_EMAIL });
+      await withSession(users.lagging, async (db, auth) => {
+        const { claims } = await auth.currentUser!.getIdTokenResult(true);
+        expect(claims['email']).toBe(users.lagging.email);
+        await expectAllowed(
+          addOwnRow(db, users.lagging, LAGGING_PROFILE_EMAIL),
+          'the lagging profile email'
+        );
+        await expectAllowed(
+          addOwnRow(db, users.lagging, users.lagging.email),
+          'the token address'
+        );
+        await expectDenied(
+          addOwnRow(db, users.lagging, randomEmail('lagging')),
+          'neither'
         );
       });
     });
 
-    test('an admin changes an unlinked member’s email, and links it only by the profile email', async () => {
+    test('an admin changes an unlinked member’s email, but never links it', async () => {
       await resetMember(members.unlinkedEdit);
       await resetMember(members.unlinkedLink);
       await withDb(users.admin, async (db) => {
         const edit = memberDoc(db, members.unlinkedEdit.key);
         const link = memberDoc(db, members.unlinkedLink.key);
         const through = await notDenied([
-          // updateMemberWithUserMatching links when the typed address is a
-          // registered user's; any other address with that userRef is I2.
+          // edit-member's old client-side auto-link (null to X): the
+          // syncMemberEmailLower trigger links on an email change instead.
+          [
+            'link by the user’s profile email',
+            () =>
+              updateDoc(link, {
+                displayName: members.unlinkedLink.displayName,
+                email: users.linkable.email,
+                active: true,
+                groupAdmin: false,
+                userRef: userRef(db, users.linkable),
+              }),
+          ],
           [
             'link with a different email',
             () =>
@@ -298,22 +342,21 @@ test.describe(
           updateDoc(edit, { email: members.unlinkedEdit.email }),
           'back to the seeded email'
         );
-        // ...and the auto-link to the registered user with that address.
+        // Positive control on the other doc: edit-member's Save, unlinked.
         await expectAllowed(
           updateDoc(link, {
             displayName: members.unlinkedLink.displayName,
-            email: users.linkable.email,
+            email: '',
             active: true,
             groupAdmin: false,
-            userRef: userRef(db, users.linkable),
           }),
-          'link by the profile email'
+          'unlinked save'
         );
       });
-      expect(
-        (await readMember(members.unlinkedLink.key))?.['userRef']?.id
-      ).toBe(users.linkable.uid);
-      await resetMember(members.unlinkedLink);
+      expect(await readMember(members.unlinkedLink.key)).toMatchObject({
+        userRef: null,
+        email: '',
+      });
     });
 
     test('userRef: an admin may clear it but never move it; a member never touches it', async () => {
@@ -508,6 +551,8 @@ test.describe(
         'memberEmailChangeLimits/{uid}',
         'memberEmailRecipientCooldown/{addressHash}',
         'groupMailLimits/{uid}',
+        'verifiedEmails/{id}',
+        'paymentLookupLimits/{uid}',
       ].filter((path) => {
         const escaped = path.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
         return !new RegExp(

@@ -42,7 +42,6 @@ describe('EditMemberComponent', () => {
   let mockDialogRef: ReturnType<typeof createMockDialogRef>;
   let mockMemberService: {
     updateMember: ReturnType<typeof vi.fn>;
-    updateMemberWithUserMatching: ReturnType<typeof vi.fn>;
     requestMemberEmailChange: ReturnType<typeof vi.fn>;
     removeMemberFromGroup: ReturnType<typeof vi.fn>;
     leaveGroup: ReturnType<typeof vi.fn>;
@@ -53,7 +52,10 @@ describe('EditMemberComponent', () => {
   let mockUserStore: ReturnType<typeof createMockUserStore>;
   let mockMemberStore: ReturnType<typeof createMockMemberStore>;
   let mockGroupStore: ReturnType<typeof createMockGroupStore>;
-  let mockGroupService: { clearCurrentGroup: ReturnType<typeof vi.fn> };
+  let mockGroupService: {
+    clearCurrentGroup: ReturnType<typeof vi.fn>;
+    releaseLeftGroup: ReturnType<typeof vi.fn>;
+  };
 
   const userRef = mockDocRef('users/user-1');
   const testUser = mockUser({ id: 'user-1', ref: userRef });
@@ -98,10 +100,12 @@ describe('EditMemberComponent', () => {
     mockUserStore = createMockUserStore();
     mockMemberStore = createMockMemberStore();
     mockGroupStore = createMockGroupStore();
-    mockGroupService = { clearCurrentGroup: vi.fn() };
+    mockGroupService = {
+      clearCurrentGroup: vi.fn(),
+      releaseLeftGroup: vi.fn(),
+    };
     mockMemberService = {
       updateMember: vi.fn().mockResolvedValue(undefined),
-      updateMemberWithUserMatching: vi.fn().mockResolvedValue(undefined),
       requestMemberEmailChange: vi.fn().mockResolvedValue('pending'),
       removeMemberFromGroup: vi.fn().mockResolvedValue(undefined),
       leaveGroup: vi.fn().mockResolvedValue(undefined),
@@ -221,29 +225,25 @@ describe('EditMemberComponent', () => {
 
       await component.onSubmit();
 
-      expect(
-        mockMemberService.updateMemberWithUserMatching
-      ).toHaveBeenCalledWith(
+      expect(mockMemberService.updateMember).toHaveBeenCalledWith(
         testMember.ref,
         {
           displayName: 'Alicia',
           active: true,
           groupAdmin: false,
-        },
-        otherUserRef,
-        'alice@example.com'
+        }
       );
       expect(mockMemberService.requestMemberEmailChange).not.toHaveBeenCalled();
     });
 
-    it('should call memberService.updateMemberWithUserMatching on submit', async () => {
+    it('should call memberService.updateMember on submit', async () => {
       const nameInput = query('edit-member-name-input') as HTMLInputElement;
       nameInput.value = 'Alicia';
       nameInput.dispatchEvent(new Event('input'));
       await fixture.whenStable();
 
       await component.onSubmit();
-      expect(mockMemberService.updateMemberWithUserMatching).toHaveBeenCalled();
+      expect(mockMemberService.updateMember).toHaveBeenCalled();
     });
 
     it('should close dialog with saved result on success', async () => {
@@ -299,7 +299,7 @@ describe('EditMemberComponent', () => {
       await component.onSubmit();
 
       const changes =
-        mockMemberService.updateMemberWithUserMatching.mock.calls[0]![1];
+        mockMemberService.updateMember.mock.calls[0]![1];
       expect(changes).toEqual({
         displayName: 'Lena B',
         active: true,
@@ -342,23 +342,19 @@ describe('EditMemberComponent', () => {
       }
     );
 
-    it('should save a new email directly, matching it to a user (no confirmation)', async () => {
+    it('should save a new email directly through updateMember (no confirmation; the server links it)', async () => {
       await typeInto('edit-member-email-input', 'uma.new@example.com');
 
       await component.onSubmit();
 
-      expect(
-        mockMemberService.updateMemberWithUserMatching
-      ).toHaveBeenCalledWith(
+      expect(mockMemberService.updateMember).toHaveBeenCalledWith(
         unlinkedMember.ref,
         {
           displayName: 'Uma',
           email: 'uma.new@example.com',
           active: true,
           groupAdmin: false,
-        },
-        null,
-        'uma@example.com'
+        }
       );
       expect(mockMemberService.requestMemberEmailChange).not.toHaveBeenCalled();
       expect(mockDialogRef.close).toHaveBeenCalledWith({
@@ -370,7 +366,7 @@ describe('EditMemberComponent', () => {
     // Another member of the group already has the address. An outcome
     // for the admin, not an app error: shown, not logged, dialog left open.
     it('should show the duplicate-address refusal without logging it', async () => {
-      mockMemberService.updateMemberWithUserMatching.mockRejectedValue(
+      mockMemberService.updateMember.mockRejectedValue(
         new DuplicateMemberEmailError()
       );
       await typeInto('edit-member-email-input', 'taken@example.com');
@@ -443,9 +439,6 @@ describe('EditMemberComponent', () => {
         { displayName: 'Myself', active: true, groupAdmin: false }
       );
       expect(mockMemberService.requestMemberEmailChange).not.toHaveBeenCalled();
-      expect(
-        mockMemberService.updateMemberWithUserMatching
-      ).not.toHaveBeenCalled();
       expect(mockDialogRef.close).toHaveBeenCalledWith({
         success: true,
         operation: 'saved',
@@ -479,9 +472,6 @@ describe('EditMemberComponent', () => {
         selfMember.ref,
         { displayName: 'Myself', active: true, groupAdmin: false }
       );
-      expect(
-        mockMemberService.updateMemberWithUserMatching
-      ).not.toHaveBeenCalled();
     });
 
     it.each(['updated', 'unchanged'])(
@@ -722,6 +712,18 @@ describe('EditMemberComponent', () => {
         'This member left the group voluntarily. They can rejoin from their own account settings.'
       );
     });
+
+    // firestore.rules leftRowUpdateValid: an admin may only rename the row.
+    it('should disable the Group Admin toggle', () => {
+      expect((component as any).editMemberForm.groupAdmin().disabled()).toBe(
+        true
+      );
+    });
+
+    it('should hide Remove, since no one else may delete the row', () => {
+      expect(query('remove-member-button')).toBeFalsy();
+      expect(query('leave-group-button')).toBeFalsy();
+    });
   });
 
   describe('when a member was merely deactivated by an admin (not leftGroup)', () => {
@@ -741,6 +743,13 @@ describe('EditMemberComponent', () => {
 
     it('should not show the leftGroup tooltip', () => {
       expect((component as any).activeTooltip).toBe('');
+    });
+
+    it('should still offer Remove and the Group Admin toggle', () => {
+      expect(query('remove-member-button')).toBeTruthy();
+      expect((component as any).editMemberForm.groupAdmin().disabled()).toBe(
+        false
+      );
     });
   });
 
@@ -768,8 +777,7 @@ describe('EditMemberComponent', () => {
       expect(dialogSpy).toHaveBeenCalled();
     });
 
-    it('should remove the group from the store when leaving deletes the member doc (no history)', async () => {
-      mockMemberService.leaveGroup.mockResolvedValue({ deleted: true });
+    it("should stop the left group's data listeners without cancelling the replacement selection", async () => {
       vi.spyOn((component as any)['router'], 'navigate').mockResolvedValue(
         true
       );
@@ -786,33 +794,13 @@ describe('EditMemberComponent', () => {
       component.leaveGroup();
       await confirmCallback(true);
 
-      expect(mockGroupStore.removeGroup).toHaveBeenCalledWith(groupId);
-      expect(mockGroupStore.patchGroupMembership).not.toHaveBeenCalled();
-    });
-
-    it("should stop the left group's data listeners, not just unselect it", async () => {
-      mockMemberService.leaveGroup.mockResolvedValue({ deleted: false });
-      vi.spyOn((component as any)['router'], 'navigate').mockResolvedValue(
-        true
+      expect(mockGroupService.releaseLeftGroup).toHaveBeenCalledExactlyOnceWith(
+        groupId
       );
-      let confirmCallback!: (confirm: boolean) => Promise<void>;
-      vi.spyOn((component as any)['dialog'], 'open').mockReturnValue({
-        afterClosed: () => ({
-          subscribe: (cb: (confirm: boolean) => Promise<void>) => {
-            confirmCallback = cb;
-            return { unsubscribe: vi.fn() };
-          },
-        }),
-      });
-
-      component.leaveGroup();
-      await confirmCallback(true);
-
-      expect(mockGroupService.clearCurrentGroup).toHaveBeenCalledOnce();
+      expect(mockGroupService.clearCurrentGroup).not.toHaveBeenCalled();
     });
 
-    it('should re-tag the group as left in the store when leaving keeps the member doc (has history)', async () => {
-      mockMemberService.leaveGroup.mockResolvedValue({ deleted: false });
+    it('should re-tag the group as left in the store (the member doc is always kept)', async () => {
       vi.spyOn((component as any)['router'], 'navigate').mockResolvedValue(
         true
       );

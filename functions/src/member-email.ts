@@ -13,9 +13,15 @@ import {
 } from 'firebase-admin/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import {
+  consumeAllowance,
+  deleteExpiredAllowanceWindows,
+  refundAllowance,
+} from './call-allowance';
+import {
   APP_BASE_URL,
   callableAppCheck,
   deleteDocsIfUnchanged,
+  isDocId,
   normalizeEmail,
 } from './common';
 import {
@@ -23,6 +29,8 @@ import {
   escapeHtml,
   isSingleEmailAddress,
 } from './email-builders';
+import { linkPendingMembersFor } from './member-linking';
+import { upsertVerifiedEmail } from './verified-emails';
 
 // ---------------------------------------------------------------------------
 // Verified group emails (Plan 4 B19). All group mail goes to the member's
@@ -67,10 +75,25 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 /** Requests that mail a link, per uid per fixed window. */
 export const EMAIL_CHANGE_LIMIT = 5;
 export const EMAIL_CHANGE_WINDOW_MS = DAY_MS;
+const EMAIL_CHANGE_LIMIT_REACHED =
+  'Too many email change requests. Please try again tomorrow.';
+
 /** How long a confirmation link works. */
 export const EMAIL_CHANGE_TOKEN_TTL_MS = DAY_MS;
 /** One confirmation mail per address per this long, from any caller. */
 export const RECIPIENT_COOLDOWN_MS = 60 * 60 * 1000;
+
+/** The caller's mailed-request allowance (call-allowance.ts). */
+function emailAllowance(uid: string, nowMs: number) {
+  return {
+    collection: MEMBER_EMAIL_LIMITS,
+    uid,
+    limit: EMAIL_CHANGE_LIMIT,
+    windowMs: EMAIL_CHANGE_WINDOW_MS,
+    nowMs,
+    exhaustedMessage: EMAIL_CHANGE_LIMIT_REACHED,
+  };
+}
 
 /**
  * The stable failed-precondition messages the confirm page tells apart
@@ -160,17 +183,6 @@ function requireUid(uid: string | undefined): string {
   return uid;
 }
 
-/** A usable single document id (no `/`, not a reserved id). */
-function isDocId(value: unknown): value is string {
-  return (
-    typeof value === 'string' &&
-    value.length > 0 &&
-    value.length <= 1500 &&
-    !value.includes('/') &&
-    !/^\.\.?$|^__.*__$/.test(value)
-  );
-}
-
 function isLinkedTo(member: DocumentData | undefined, uid: string): boolean {
   const userRef: unknown = member?.['userRef'];
   return (
@@ -199,7 +211,7 @@ function assertActive(member: DocumentData | undefined): void {
  * (AUTH_LOOKUP_UNAVAILABLE): it says nothing about the account, so it must
  * not send the user off to verify their email.
  */
-async function requireVerifiedCaller(
+export async function requireVerifiedCaller(
   uid: string
 ): Promise<{ email: string; emailLower: string }> {
   const email = await verifiedAuthEmail(uid);
@@ -294,64 +306,6 @@ function isCooldownRefusal(error: unknown): boolean {
   );
 }
 
-/** Counts one mailed request against the caller's window, or refuses it. */
-async function consumeRequestAllowance(
-  db: Firestore,
-  uid: string,
-  nowMs: number
-): Promise<void> {
-  const limitRef = db.collection(MEMBER_EMAIL_LIMITS).doc(uid);
-  await db.runTransaction(async (txn) => {
-    const snap = await txn.get(limitRef);
-    const windowStart = snap.get('windowStart') as Timestamp | undefined;
-    const count = (snap.get('count') as number | undefined) ?? 0;
-    if (
-      !snap.exists ||
-      !(windowStart instanceof Timestamp) ||
-      nowMs - windowStart.toMillis() >= EMAIL_CHANGE_WINDOW_MS
-    ) {
-      txn.set(limitRef, {
-        windowStart: Timestamp.fromMillis(nowMs),
-        count: 1,
-      });
-      return;
-    }
-    if (count >= EMAIL_CHANGE_LIMIT) {
-      throw new HttpsError(
-        'resource-exhausted',
-        'Too many email change requests. Please try again tomorrow.'
-      );
-    }
-    txn.update(limitRef, { count: count + 1 });
-  });
-}
-
-/**
- * Gives back one request `consumeRequestAllowance` charged in the window
- * that started at or before `nowMs`: used when the send it paid for was
- * refused by the recipient cooldown after all (a lost race). A window that
- * has rolled over since is left alone.
- */
-async function refundRequestAllowance(
-  db: Firestore,
-  uid: string,
-  nowMs: number
-): Promise<void> {
-  const limitRef = db.collection(MEMBER_EMAIL_LIMITS).doc(uid);
-  await db.runTransaction(async (txn) => {
-    const snap = await txn.get(limitRef);
-    const windowStart = snap.get('windowStart') as Timestamp | undefined;
-    const count = (snap.get('count') as number | undefined) ?? 0;
-    if (
-      count > 0 &&
-      windowStart instanceof Timestamp &&
-      windowStart.toMillis() <= nowMs
-    ) {
-      txn.update(limitRef, { count: count - 1 });
-    }
-  });
-}
-
 /**
  * Edit-member's email change on one's own linked row. Returns:
  *  - unchanged: the address (case-insensitively) is the current one;
@@ -428,7 +382,7 @@ export const requestMemberEmailChange = onCall<{
 
     // The allowance comes next, so every other mailed or refused attempt
     // (a duplicate address included) counts against it (M2).
-    await consumeRequestAllowance(db, uid, nowMs);
+    await consumeAllowance(db, emailAllowance(uid, nowMs));
 
     const token = randomBytes(32).toString('base64url');
     const tokenRef = db
@@ -469,7 +423,7 @@ export const requestMemberEmailChange = onCall<{
         // logged, never thrown: the caller must still see the refusal.
         if (isCooldownRefusal(error)) {
           try {
-            await refundRequestAllowance(db, uid, nowMs);
+            await refundAllowance(db, emailAllowance(uid, nowMs));
           } catch (refundError) {
             console.error(
               `Email change allowance refund failed for ${uid}:`,
@@ -510,7 +464,7 @@ export const confirmMemberEmailChange = onCall<{ token?: unknown }>(
     const tokenRef = db
       .collection(MEMBER_EMAIL_TOKENS)
       .doc(hashEmailChangeToken(token));
-    return db.runTransaction(async (txn) => {
+    const confirmed = await db.runTransaction(async (txn) => {
       const tokenSnap = await txn.get(tokenRef);
       const expiresAt = tokenSnap.get('expiresAt') as Timestamp | undefined;
       if (
@@ -532,10 +486,23 @@ export const confirmMemberEmailChange = onCall<{ token?: unknown }>(
       }
       assertActive(memberSnap.data());
       await assertNoOtherMemberHas((q) => txn.get(q), memberRef, emailLower);
+      // All reads are done: a transaction rejects a read after a write.
       txn.update(memberRef, { email, emailLower });
       txn.delete(tokenRef);
+      // Following the link proved the address is the caller's.
+      await upsertVerifiedEmail(db, email, uid, 'group-confirm', txn);
       return { groupId: memberRef.parent.parent!.id, email };
     });
+
+    // The address may be one other groups invited the caller under. The
+    // confirmation stands even if this misses: the Groups page's
+    // linkInvitedMembers call links them later.
+    try {
+      await linkPendingMembersFor(db, uid);
+    } catch (error) {
+      console.error(`Error linking pending members for ${uid}:`, error);
+    }
+    return confirmed;
   }
 );
 
@@ -670,14 +637,11 @@ export async function deleteExpiredMemberEmailChanges(
       .collection(MEMBER_EMAIL_TOKENS)
       .where('expiresAt', '<=', Timestamp.fromMillis(nowMs))
   );
-  const limits = await deleteAll(
-    db
-      .collection(MEMBER_EMAIL_LIMITS)
-      .where(
-        'windowStart',
-        '<=',
-        Timestamp.fromMillis(nowMs - EMAIL_CHANGE_WINDOW_MS)
-      )
+  const limits = await deleteExpiredAllowanceWindows(
+    db,
+    MEMBER_EMAIL_LIMITS,
+    EMAIL_CHANGE_WINDOW_MS,
+    nowMs
   );
   const cooldowns = await deleteAll(
     db

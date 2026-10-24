@@ -302,7 +302,7 @@ The application has three distinct user states that affect navigation:
 
 **Update Group (`updateGroup`):**
 - ✅ **Deactivation logic**: When setting `active: false` or `archived: true`:
-  - Clears group as `defaultGroupRef` for all users who had it set
+  - Clears group as `defaultGroupRef` for all users who had it set (done on the server by the `clearDefaultsOnGroupDeactivate` trigger, shortly after the save; a client never writes another user's record). Deleting or unlinking a member likewise clears that user's default for the group on the server; a deactivated member's own app clears it the next time it loads
   - If current group is being deactivated, clears it from current session
   - Removes from localStorage
   - User must select another group to continue working
@@ -366,38 +366,42 @@ The application has three distinct user states that affect navigation:
 - Members do NOT have special features like default split percentages
 - Payment service handles (PayPal, Venmo, Zelle, CashApp) are stored at the **User** level, not Member level
   - This makes sense since a user can be a member of multiple groups
-  - Handles are pulled from the Users collection when displaying payment options
+  - Handles are fetched through the `getMemberPaymentMethods` Cloud Function when displaying payment options. A user can read only their own user record, so the function checks that the caller is an active member of the group and returns just the payee's handles. It allows 100 lookups per user per day; past that the Pay dialog says "You've looked up too many payment details today. Try again tomorrow."
+- Only the user themself can change their user record (and so their payment handles). No client can point a member row at a different user account: linking is done on the server
 
 **Business Rules**:
 
 **Add Member (`addMemberToGroup`):**
 - ✅ **Duplicate email check**: Cannot add member if one with the same email already exists in the group
   - Error: "A member with this email address already exists in the group."
-- ✅ **Auto user linking**: If a User account exists with the member's email, automatically links member to that user
+- ✅ **Auto user linking**: The member is created unlinked. If a User account has verified the member's email address, the `syncMemberEmailLower` trigger links the member to that user a few seconds after the save
   - This allows the member to see the group when they log in
-  - Links `userRef` on member document to user document
+  - Sets `userRef` on the member document to the user document
+  - An account that hasn't verified the address yet is linked when it does (the next sign-in with a verified email)
+  - Matching uses the server-only `verifiedEmails` index, which keeps every address a user has verified (including earlier login addresses)
 
-**Update Member (`updateMember`, `updateMemberWithUserMatching`):**
+**Update Member (`updateMember`):**
 - ✅ **Duplicate email check**: Cannot update email if another member with that email already exists in the group
   - Excludes current member from duplicate check
   - Error: "A member with this email address already exists in the group."
-- ✅ **Auto user linking on email change**: When email is updated and member isn't already linked:
-  - Searches for User account with new email
-  - Automatically links if found
+- ✅ **Auto user linking on email change**: When an admin changes the email of a member that isn't linked, the same trigger links it if a User account has verified the new address
+- A linked member's email can't be edited by anyone else (the field is disabled); the member changes their own through a confirmation link mailed to the new address
 
 **Delete Member (`removeMemberFromGroup`):**
 - ✅ **Dependency check**: Cannot delete if member has any splits (as payer OR owed by)
   - Error: "This member has existing splits and cannot be deleted."
   - **Solution**: Make member inactive instead
 - Member is fully deleted if no splits exist
+- A member who left the group voluntarily can't be removed (see Leave Group)
 
 **Leave Group (`leaveGroup`):**
 - ✅ **Admin requirement**: If leaving member is the only group admin, cannot leave
   - Error: "You are the only group admin. Please assign another member as admin before leaving the group."
   - Must promote another member to admin first
-- ✅ **Smart delete logic**:
-  - If member has splits: Sets `active = false` (preserves data)
-  - If member has no splits: Fully deletes member document
+- ✅ **The member row is always kept**, splits or not: it is marked `active = false`, `leftGroup = true`, `groupAdmin = false`
+  - The group then shows in the user's rejoin list (Account settings), and only they can rejoin it
+  - The kept row stops an admin inviting them back: the server never links a user into a group where they already have a row, under any of their addresses
+  - No one else can change a left member's row except to rename it: an admin can't reactivate, promote, unlink or remove it (the Edit Member dialog locks Active and Group Admin and hides Remove)
 - Clears user's `defaultGroupRef`
 
 **Testable Behaviors**:
@@ -417,8 +421,9 @@ The application has three distinct user states that affect navigation:
 - [ ] Can delete member with no splits successfully
 - [ ] Leave group fails if user is only admin
 - [ ] Error shown when only admin tries to leave
-- [ ] Leave group with splits makes member inactive
-- [ ] Leave group without splits deletes member
+- [ ] Leave group marks the member left and inactive, with or without splits (the row is never deleted)
+- [ ] An admin can't re-invite a member who left (the new row stays unlinked)
+- [ ] An admin can't reactivate, promote or remove a member who left
 - [ ] Leave group clears user's defaultGroupRef
 - [ ] Active/inactive status can be toggled
 - [ ] Inactive members don't appear in expense form dropdowns

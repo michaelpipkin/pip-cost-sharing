@@ -12,6 +12,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { getStorage } from 'firebase-admin/storage';
 import {
   onDocumentCreated,
+  onDocumentUpdated,
   onDocumentWritten,
 } from 'firebase-functions/v2/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
@@ -26,7 +27,6 @@ import {
   getSmtpPassword,
   isDemoProject,
   normalizeEmail,
-  onePerGroupLinks,
 } from './common';
 import {
   buildEmailHtml,
@@ -43,6 +43,16 @@ import {
   reserveGroupMail,
 } from './mail-allowance';
 import { deleteExpiredMemberEmailChanges } from './member-email';
+import {
+  linkMemberByVerifiedEmail,
+  linkPendingMembersFor,
+} from './member-linking';
+import { removeAllFor, upsertVerifiedEmail } from './verified-emails';
+import { deleteExpiredAllowanceWindows } from './call-allowance';
+import {
+  PAYMENT_LOOKUP_LIMITS,
+  PAYMENT_LOOKUP_WINDOW_MS,
+} from './payment-methods';
 
 export {
   buildEmailHtml,
@@ -62,6 +72,7 @@ export {
   requestMemberEmailChange,
   updateMemberEmails,
 } from './member-email';
+export { getMemberPaymentMethods } from './payment-methods';
 export { scanReceipt } from './receipt-ocr';
 export { createUserProfileOnSignUp } from './user-onboarding';
 export {
@@ -411,6 +422,19 @@ export const deleteOldPaidExpenses = onSchedule('0 0 * * *', async () => {
     console.error('Error deleting expired email-change tokens: ', error);
   }
 
+  // Ended payment-lookup windows (payment-methods.ts).
+  try {
+    const deleted = await deleteExpiredAllowanceWindows(
+      db,
+      PAYMENT_LOOKUP_LIMITS,
+      PAYMENT_LOOKUP_WINDOW_MS,
+      Date.now()
+    );
+    console.log(`Deleted ${deleted} ended payment-lookup limit doc(s)`);
+  } catch (error) {
+    console.error('Error deleting ended payment-lookup limits: ', error);
+  }
+
   // Ended group-mail allowance counters (mail-allowance.ts).
   try {
     const deleted = await deleteExpiredGroupMailLimits();
@@ -556,6 +580,8 @@ export const deleteUserAccount = onCall(callableAppCheck, async (request) => {
       console.error('Error processing member documents:', error);
     }
 
+    await removeAllFor(db, uid);
+
     if (userDoc.exists) {
       await userDocRef.delete();
       console.log(`Deleted user document: ${userDocRef.path}`);
@@ -636,49 +662,21 @@ export const deleteGroup = onCall(callableAppCheck, async (request) => {
 });
 
 /**
- * Links unlinked (`userRef == null`) member records with a given email to
- * `uid`. Matches on `emailLower` so casing differences between the invite
- * and the registered account don't prevent the link. Links at most one row
- * per group, and none in a group where `uid` already has a row
- * (onePerGroupLinks). Exported separately
- * from the callable wrapper below so it has direct unit test coverage
- * without mocking the callable request shape (mirrors
- * handleUserGroupMembership / deleteGroupInternal).
+ * Records `email` (the caller's verified sign-in address) as one of `uid`'s
+ * proven addresses in the verified-address index, then links every unlinked
+ * (`userRef == null`) member record invited under any address `uid` has
+ * proven (linkPendingMembersFor). Links at most one row per group, and none
+ * in a group where `uid` already has a row. Exported separately from the
+ * callable wrapper below so it has direct unit test coverage without mocking
+ * the callable request shape (mirrors handleUserGroupMembership /
+ * deleteGroupInternal).
  */
 export async function linkInvitedMembersInternal(
   uid: string,
   email: string
 ): Promise<{ membersLinked: number }> {
-  const membersSnapshot = await db
-    .collectionGroup('members')
-    .where('emailLower', '==', normalizeEmail(email))
-    .where('userRef', '==', null)
-    .get();
-
-  // A linked member's email must be one its user proved they own (B19,
-  // group-mail-recipient.ts), so the email itself must match too: emailLower
-  // lags an email change until syncMemberEmailLower catches up.
-  const emailLower = normalizeEmail(email);
-  const matching = membersSnapshot.docs.filter((memberDoc) => {
-    const memberEmail: unknown = memberDoc.get('email');
-    return (
-      typeof memberEmail === 'string' &&
-      normalizeEmail(memberEmail) === emailLower
-    );
-  });
-  const userRef = db.collection('users').doc(uid);
-  const links = await onePerGroupLinks(
-    matching.map((memberDoc) => ({ ref: memberDoc.ref, userRef }))
-  );
-  if (links.length > 0) {
-    const batch = db.batch();
-    for (const link of links) {
-      batch.update(link.ref, { userRef });
-    }
-    await batch.commit();
-  }
-
-  return { membersLinked: links.length };
+  await upsertVerifiedEmail(db, email, uid, 'login');
+  return { membersLinked: await linkPendingMembersFor(db, uid) };
 }
 
 /**
@@ -917,13 +915,83 @@ export async function syncGroupMemberUidsInternal(
     sameUids(adminUids, current['adminUids'] ?? []);
   if (unchanged) return;
 
+  const stillMember = new Set(memberUids);
+  const removedUids = ((current['memberUids'] ?? []) as string[]).filter(
+    (uid) => !stillMember.has(uid)
+  );
+
+  // Access arrays first: a failed default clear must never leave a removed
+  // member's access in place.
   await groupRef.update({ memberUids, activeMemberUids, adminUids });
+
+  // A uid that dropped out of memberUids (row deleted, unlinked or
+  // anonymized) must not keep this group as its default. A member who left
+  // voluntarily stays linked, so stays in memberUids and is not cleared here.
+  // Best-effort: one failure is logged and does not skip the others.
+  for (const uid of removedUids) {
+    try {
+      await clearDefaultGroupRefForUser(
+        db.collection('users').doc(uid),
+        groupRef
+      );
+    } catch (error) {
+      console.error(
+        `Failed to clear default group for user ${uid} removed from group ${groupId}:`,
+        error
+      );
+    }
+  }
+}
+
+/** Clears one user's defaultGroupRef, only if it still points at this group. */
+async function clearDefaultGroupRefForUser(
+  userRef: DocumentReference,
+  groupRef: DocumentReference
+): Promise<void> {
+  await db.runTransaction(async (tx) => {
+    const userSnapshot = await tx.get(userRef);
+    if (!userSnapshot.exists) return;
+    const defaultGroupRef = userSnapshot.get('defaultGroupRef') as
+      | DocumentReference
+      | null
+      | undefined;
+    if (!defaultGroupRef || !defaultGroupRef.isEqual(groupRef)) return;
+    tx.update(userRef, { defaultGroupRef: null });
+  });
 }
 
 export const syncGroupMemberUids = onDocumentWritten(
   'groups/{groupId}/members/{memberId}',
   async (event) => {
     await syncGroupMemberUidsInternal(event.params['groupId']);
+  }
+);
+
+/**
+ * True when a group went from active to inactive or from unarchived to
+ * archived. Reactivating, unarchiving, renaming an already-inactive group and
+ * the membership-array updates syncGroupMemberUids writes are not deactivations.
+ */
+export function isGroupDeactivation(
+  before: DocumentData,
+  after: DocumentData
+): boolean {
+  const wasActive = before['active'] !== false;
+  const isActive = after['active'] !== false;
+  const wasArchived = before['archived'] === true;
+  const isArchived = after['archived'] === true;
+  return (wasActive && !isActive) || (!wasArchived && isArchived);
+}
+
+export const clearDefaultsOnGroupDeactivate = onDocumentUpdated(
+  'groups/{groupId}',
+  async (event) => {
+    const before = event.data?.before.data();
+    const after = event.data?.after.data();
+    if (!before || !after || !isGroupDeactivation(before, after)) return;
+    await clearDefaultGroupRefs(
+      db.collection('groups').doc(event.params['groupId'])
+    );
   }
 );
 
@@ -975,13 +1043,41 @@ export const syncUserEmailLower = onDocumentWritten('users/{userId}', async (eve
 
 /**
  * Same as syncUserEmailLower, for `groups/{groupId}/members/{memberId}.emailLower`.
+ * Also links an unlinked row to the owner of its address in the
+ * verified-address index when the write created the row or changed its email
+ * (linkMemberByVerifiedEmail); a link writes emailLower itself. A failed link
+ * is logged and emailLower is still synced; a stale event writes nothing.
  */
 export const syncMemberEmailLower = onDocumentWritten(
   'groups/{groupId}/members/{memberId}',
   async (event) => {
     const after = event.data?.after;
     if (!after?.exists) return;
-    await syncEmailLower(after.ref, after.data());
+    const data = after.data()!;
+    let result: Awaited<ReturnType<typeof linkMemberByVerifiedEmail>> | null =
+      null;
+    try {
+      result = await linkMemberByVerifiedEmail(
+        db,
+        after.ref,
+        event.data?.before?.data(),
+        data
+      );
+    } catch (error) {
+      // The trigger has no retry, so a failed link must not skip the
+      // emailLower sync: without emailLower the invite could never be found
+      // by linkPendingMembersFor or the duplicate check. Never log the address.
+      const reason =
+        (error as { code?: unknown } | null)?.code ??
+        (error instanceof Error ? error.name : typeof error);
+      console.error(`Linking member ${after.ref.path} failed: ${reason}`);
+    }
+    if (result === 'linked') return;
+    // The event's data is outdated (the row changed again or is gone), so
+    // syncing from it would write a wrong emailLower or hit NOT_FOUND; the
+    // later write's own trigger keeps it right.
+    if (result === 'stale') return;
+    await syncEmailLower(after.ref, data);
   }
 );
 

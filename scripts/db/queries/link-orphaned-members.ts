@@ -1,18 +1,18 @@
+import type { DocumentReference } from 'firebase-admin/firestore';
+import { verifiedEmailId } from '../../../functions/src/email-identity.ts';
 import { db, writeTable } from '../lib.ts';
 /**
- * One-time repair for member records left unlinked by the App Check token
- * race in linkInvitedMembers (2026-08-10 through the client-side fix - see
- * .claude/app-check-enforcement-followup.md). Mirrors linkInvitedMembers'
- * own predicate exactly: collectionGroup('members') where userRef == null,
- * joined against users by exact email match. Members with a blank email are
- * intentional non-app placeholders (see member.service.ts addMemberToGroup)
- * and are skipped.
+ * Repair for member records left unlinked (userRef == null) although their
+ * address has an owner. Joins each unlinked row against the verified-address
+ * index (verifiedEmails/{verifiedEmailId(email)}), the same match the
+ * server's own linking uses (syncMemberEmailLower, linkInvitedMembers):
+ * the index holds only addresses a user proved, one owner per address.
+ * Members with a blank email are intentional non-app placeholders (see
+ * member.service.ts addMemberToGroup) and are skipped.
  *
- * Case sensitivity note: nothing in the app lowercases invite/account
- * emails, so the exact-match join mirrors linkInvitedMembers rather than
- * repairing more than the original function would have. Any
- * case-insensitive-only matches are printed separately as informational -
- * review those manually before deciding whether to link them.
+ * Keeps one row per account per group: a row is not linked when its owner
+ * already has a row in that group, or when an earlier row in this run links
+ * the owner there.
  *
  * Dry-run by default — prints what would change. Pass --apply to write.
  *
@@ -32,21 +32,6 @@ if (unlinkedSnap.empty) {
   process.exit(0);
 }
 
-const usersSnap = await db.collection('users').get();
-const userIdByEmail = new Map<string, string>();
-const userIdsByLowerEmail = new Map<string, string[]>();
-
-for (const userDoc of usersSnap.docs) {
-  const email = userDoc.data()['email'] as string | undefined;
-  if (!email) continue;
-  userIdByEmail.set(email, userDoc.id);
-  const lower = email.toLowerCase();
-  userIdsByLowerEmail.set(lower, [
-    ...(userIdsByLowerEmail.get(lower) ?? []),
-    userDoc.id,
-  ]);
-}
-
 const linked: {
   groupId: string;
   memberId: string;
@@ -54,53 +39,51 @@ const linked: {
   email: string;
   userId: string;
 }[] = [];
-
-const caseInsensitiveOnly: {
-  groupId: string;
-  memberId: string;
-  displayName: string;
-  email: string;
-  candidateUserId: string;
-}[] = [];
+let alreadyInGroup = 0;
+// "<members collection path>|<uid>" for every link made in this run.
+const linkedInGroup = new Set<string>();
 
 for (const memberDoc of unlinkedSnap.docs) {
   const data = memberDoc.data();
-  const email = data['email'] as string | undefined;
-  if (!email) continue; // intentional non-app placeholder, skip
+  const email: unknown = data['email'];
+  if (typeof email !== 'string') continue;
+  const id = verifiedEmailId(email);
+  if (id === '') continue; // intentional non-app placeholder, skip
 
-  const groupId = memberDoc.ref.parent.parent!.id;
-  const displayName = (data['displayName'] as string) ?? '(unnamed)';
+  const indexDoc = await db.collection('verifiedEmails').doc(id).get();
+  const userId: unknown = indexDoc.get('uid');
+  if (typeof userId !== 'string') continue;
 
-  const exactUserId = userIdByEmail.get(email);
-  if (exactUserId) {
-    linked.push({
-      groupId,
-      memberId: memberDoc.id,
-      displayName,
-      email,
-      userId: exactUserId,
-    });
-    if (apply) {
-      await memberDoc.ref.update({
-        userRef: db.collection('users').doc(exactUserId),
-      });
-    }
+  const userRef: DocumentReference = db.collection('users').doc(userId);
+  const groupKey = `${memberDoc.ref.parent.path}|${userId}`;
+  if (linkedInGroup.has(groupKey)) {
+    alreadyInGroup++;
     continue;
   }
+  const existing = await memberDoc.ref.parent
+    .where('userRef', '==', userRef)
+    .limit(1)
+    .get();
+  if (!existing.empty) {
+    alreadyInGroup++;
+    continue;
+  }
+  linkedInGroup.add(groupKey);
 
-  for (const candidateUserId of userIdsByLowerEmail.get(email.toLowerCase()) ?? []) {
-    caseInsensitiveOnly.push({
-      groupId,
-      memberId: memberDoc.id,
-      displayName,
-      email,
-      candidateUserId,
-    });
+  linked.push({
+    groupId: memberDoc.ref.parent.parent!.id,
+    memberId: memberDoc.id,
+    displayName: (data['displayName'] as string) ?? '(unnamed)',
+    email,
+    userId,
+  });
+  if (apply) {
+    await memberDoc.ref.update({ userRef });
   }
 }
 
 if (linked.length === 0) {
-  console.log('No exact email matches found among unlinked member records.');
+  console.log('No unlinked member records have an address owner.');
 } else {
   console.log(
     apply
@@ -118,19 +101,10 @@ if (linked.length === 0) {
   }
 }
 
-if (caseInsensitiveOnly.length > 0) {
+if (alreadyInGroup > 0) {
   console.log(
-    `\n${caseInsensitiveOnly.length} unlinked member(s) have a case-insensitive-only email match — NOT linked automatically, review manually:\n`
+    `\n${alreadyInGroup} row(s) skipped: the address owner already has a row in that group.`
   );
-  console.log(
-    `${'Group ID'.padEnd(24)} ${'Member'.padEnd(24)} ${'Member Email'.padEnd(30)} Candidate User ID`
-  );
-  console.log('-'.repeat(100));
-  for (const c of caseInsensitiveOnly) {
-    console.log(
-      `${c.groupId.padEnd(24)} ${c.displayName.padEnd(24)} ${c.email.padEnd(30)} ${c.candidateUserId}`
-    );
-  }
 }
 
 writeTable(

@@ -47,6 +47,11 @@ export class ChunkedBatch {
     this.#current().set(ref, data);
   }
 
+  /** Create-only: the whole batch fails if the doc already exists. */
+  create(ref: DocumentReference, data: FirebaseFirestore.DocumentData): void {
+    this.#current().create(ref, data);
+  }
+
   /**
    * `precondition` (e.g. `{ lastUpdateTime }`) fails the whole batch if the
    * doc changed since it was read.

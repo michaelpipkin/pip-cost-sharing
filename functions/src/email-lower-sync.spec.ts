@@ -3,6 +3,7 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { makeGroup, makeMember, uniqueId } from './test-fixtures';
 import { syncMemberEmailLower, syncUserEmailLower } from './index';
+import { upsertVerifiedEmail } from './verified-emails';
 
 const db = getFirestore();
 
@@ -159,5 +160,239 @@ describe.each(targets)('$name', (target) => {
     ).resolves.toBeUndefined();
 
     expect((await ref.get()).updateTime!.isEqual(updateTime)).toBe(true);
+  });
+});
+
+// syncMemberEmailLower also links an unlinked row to the owner of its address
+// in the verified-address index, when the write created the row or changed
+// its email. The event's before is the row as it was (undefined data for a
+// create) and its after is the row as the write left it.
+describe('syncMemberEmailLower linking', () => {
+  /** A snapshot of a row before the write, or of a create (no data). */
+  function beforeSnap(data?: Record<string, unknown>) {
+    return { exists: data !== undefined, data: () => data };
+  }
+
+  async function runWrite(
+    ref: DocumentReference,
+    before: Record<string, unknown> | undefined,
+    after?: Awaited<ReturnType<DocumentReference['get']>>
+  ) {
+    await (syncMemberEmailLower as any).run({
+      data: { before: beforeSnap(before), after: after ?? (await ref.get()) },
+      params: { groupId: ref.parent.parent!.id, memberId: ref.id },
+    });
+    return ref.get();
+  }
+
+  async function ownedAddress(owner: string, address?: string) {
+    const email = address ?? `${uniqueId('own')}@Example.com`;
+    // The owner's account exists: a link to a deleted account is refused.
+    await db.collection('users').doc(owner).set({ email });
+    await upsertVerifiedEmail(db, email, owner, 'login');
+    return email;
+  }
+
+  it('links a new row to the owner of its address', async () => {
+    const owner = uniqueId('owner');
+    const email = await ownedAddress(owner);
+    const row = await makeMember(await makeGroup(), { email });
+
+    const snap = await runWrite(row, undefined);
+
+    expect(snap.get('userRef').path).toBe(`users/${owner}`);
+    expect(snap.get('emailLower')).toBe(email.toLowerCase());
+  });
+
+  it("links when an unlinked row's email changes to an owned address", async () => {
+    const owner = uniqueId('owner');
+    const email = await ownedAddress(owner);
+    const old = `${uniqueId('old')}@example.com`;
+    const row = await makeMember(await makeGroup(), { email, emailLower: old });
+
+    const snap = await runWrite(row, { email: old, emailLower: old, userRef: null });
+
+    expect(snap.get('userRef').id).toBe(owner);
+    expect(snap.get('emailLower')).toBe(email.toLowerCase());
+  });
+
+  it('links an address with / % + and capitals', async () => {
+    const owner = uniqueId('owner');
+    const tag = uniqueId('ann').toLowerCase();
+    await ownedAddress(owner, `${tag}/B+c%d@Example.com`);
+    const stored = `${tag}/b+c%d@example.com`;
+    const row = await makeMember(await makeGroup(), { email: stored });
+
+    const snap = await runWrite(row, undefined);
+
+    expect(snap.get('userRef').id).toBe(owner);
+    expect(snap.get('emailLower')).toBe(stored);
+  });
+
+  it('does not link on an unlink', async () => {
+    const owner = uniqueId('owner');
+    const email = await ownedAddress(owner);
+    const row = await makeMember(await makeGroup(), { email });
+
+    const snap = await runWrite(row, {
+      email,
+      userRef: db.doc(`users/${owner}`),
+    });
+
+    expect(snap.get('userRef')).toBeNull();
+  });
+
+  it('does not link without an index entry', async () => {
+    const row = await makeMember(await makeGroup(), {
+      email: `${uniqueId('nobody')}@example.com`,
+    });
+
+    const snap = await runWrite(row, undefined);
+
+    expect(snap.get('userRef')).toBeNull();
+    // emailLower is still kept in step when no link is made.
+    expect(snap.get('emailLower')).toBe(snap.get('email'));
+  });
+
+  it('does not link a row whose email is blank', async () => {
+    const row = await makeMember(await makeGroup(), { email: '   ' });
+
+    const snap = await runWrite(row, undefined);
+
+    expect(snap.get('userRef')).toBeNull();
+  });
+
+  it('does not link a second row for an account already in the group', async () => {
+    const owner = uniqueId('owner');
+    const email = await ownedAddress(owner);
+    const group = await makeGroup();
+    const existing = await makeMember(group, {
+      email: `${uniqueId('first')}@example.com`,
+      userRef: db.doc(`users/${owner}`),
+    });
+    const row = await makeMember(group, { email });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    const snap = await runWrite(row, undefined);
+
+    expect(snap.get('userRef')).toBeNull();
+    expect(snap.get('emailLower')).toBe(email.toLowerCase());
+    expect((await existing.get()).get('userRef').id).toBe(owner);
+    expect(warn).toHaveBeenCalledTimes(1);
+    const logged = warn.mock.calls[0]!.join(' ');
+    expect(logged).toContain(row.path);
+    expect(logged).toContain(owner);
+    expect(logged.toLowerCase()).not.toContain(email.toLowerCase());
+  });
+
+  // leaveGroup keeps the row (leftGroup), and that row is what stops an
+  // admin inviting the member back, under this address or any other.
+  it('does not link a re-invite of an account that left the group', async () => {
+    const owner = uniqueId('owner');
+    const email = await ownedAddress(owner);
+    const group = await makeGroup();
+    await makeMember(group, {
+      email: `${uniqueId('old')}@example.com`,
+      userRef: db.doc(`users/${owner}`),
+      active: false,
+      leftGroup: true,
+      groupAdmin: false,
+    });
+    const reinvite = await makeMember(group, { email });
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    const snap = await runWrite(reinvite, undefined);
+
+    expect(snap.get('userRef')).toBeNull();
+  });
+
+  it('links only one of two rows created at once for the same account', async () => {
+    const owner = uniqueId('owner');
+    const first = await ownedAddress(owner);
+    const second = await ownedAddress(owner);
+    const group = await makeGroup();
+    const rowA = await makeMember(group, { email: first });
+    const rowB = await makeMember(group, { email: second });
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    const [snapA, snapB] = await Promise.all([
+      runWrite(rowA, undefined),
+      runWrite(rowB, undefined),
+    ]);
+
+    const linked = [snapA, snapB].filter((s) => s.get('userRef') !== null);
+    expect(linked).toHaveLength(1);
+    expect(linked[0]!.get('userRef').id).toBe(owner);
+  });
+
+  it('does not link when the email changed again before the trigger ran', async () => {
+    const owner = uniqueId('owner');
+    const email = await ownedAddress(owner);
+    const old = `${uniqueId('old')}@example.com`;
+    const row = await makeMember(await makeGroup(), { email });
+    const after = await row.get();
+    await row.update({ email: `${uniqueId('later')}@example.com` });
+
+    const snap = await runWrite(row, { email: old, userRef: null }, after);
+
+    expect(snap.get('userRef')).toBeNull();
+  });
+
+  it('writes no emailLower from stale event data', async () => {
+    const owner = uniqueId('owner');
+    const email = await ownedAddress(owner);
+    const later = `${uniqueId('later')}@example.com`;
+    const row = await makeMember(await makeGroup(), { email });
+    const after = await row.get();
+    await row.update({ email: later });
+
+    const snap = await runWrite(row, undefined, after);
+
+    // The stale email must not become emailLower; the later write's own
+    // trigger keeps it right.
+    expect(snap.get('userRef')).toBeNull();
+    expect(snap.data()).not.toHaveProperty('emailLower');
+  });
+
+  it('does not throw for a stale event on a deleted row', async () => {
+    const owner = uniqueId('owner');
+    const email = await ownedAddress(owner);
+    const row = await makeMember(await makeGroup(), { email });
+    const after = await row.get();
+    await row.delete();
+
+    await expect(runWrite(row, undefined, after)).resolves.toBeDefined();
+
+    expect((await row.get()).exists).toBe(false);
+  });
+
+  it('still writes emailLower when the link step throws', async () => {
+    const owner = uniqueId('owner');
+    const email = await ownedAddress(owner);
+    const row = await makeMember(await makeGroup(), { email });
+    vi.spyOn(db, 'runTransaction').mockRejectedValue(new Error('firestore down'));
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    const snap = await runWrite(row, undefined);
+
+    expect(snap.get('userRef')).toBeNull();
+    expect(snap.get('emailLower')).toBe(email.toLowerCase());
+    expect(error).toHaveBeenCalledTimes(1);
+    const logged = error.mock.calls[0]!.join(' ');
+    expect(logged).toContain(row.path);
+    expect(logged.toLowerCase()).not.toContain(email.toLowerCase());
+  });
+
+  it('does not link to an account whose users doc is gone', async () => {
+    const owner = uniqueId('owner');
+    const email = `${uniqueId('ghost')}@Example.com`;
+    // An index entry that outlived the account (no users/{owner} doc).
+    await upsertVerifiedEmail(db, email, owner, 'login');
+    const row = await makeMember(await makeGroup(), { email });
+
+    const snap = await runWrite(row, undefined);
+
+    expect(snap.get('userRef')).toBeNull();
+    expect(snap.get('emailLower')).toBe(email.toLowerCase());
   });
 });
