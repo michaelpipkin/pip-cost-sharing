@@ -42,7 +42,10 @@ import {
   groupMailLimitError,
   reserveGroupMail,
 } from './mail-allowance';
-import { deleteExpiredMemberEmailChanges } from './member-email';
+import {
+  cancelPendingEmailChanges,
+  deleteExpiredMemberEmailChanges,
+} from './member-email';
 import {
   linkMemberByVerifiedEmail,
   linkPendingMembersFor,
@@ -1042,16 +1045,66 @@ export const syncUserEmailLower = onDocumentWritten('users/{userId}', async (eve
 });
 
 /**
+ * A failed step's error code or type, for a log line. Never the message: a
+ * Firestore error's message can quote the document, address included.
+ */
+function failureReason(error: unknown): string {
+  const code = (error as { code?: unknown } | null)?.code;
+  if (typeof code === 'string' || typeof code === 'number') return String(code);
+  return error instanceof Error ? error.name : typeof error;
+}
+
+/**
+ * Whether a member write took the row away from the user it was linked to:
+ * an unlink, a relink to someone else, or a delete. `before`/`after` are the
+ * event's snapshots (absent or not existing for a create or a delete).
+ */
+function lostItsLink(
+  before: MemberSnapshot | undefined,
+  after: MemberSnapshot | undefined
+): boolean {
+  const was = linkedUserPath(before);
+  return was !== null && linkedUserPath(after) !== was;
+}
+
+type MemberSnapshot = { exists: boolean; data(): DocumentData | undefined };
+
+/** The path of the user a member snapshot is linked to, or null. */
+function linkedUserPath(snap: MemberSnapshot | undefined): string | null {
+  const ref: unknown = snap?.exists ? snap.data()?.['userRef'] : null;
+  const path: unknown = (ref as { path?: unknown } | null)?.path;
+  return typeof path === 'string' ? path : null;
+}
+
+/**
  * Same as syncUserEmailLower, for `groups/{groupId}/members/{memberId}.emailLower`.
  * Also links an unlinked row to the owner of its address in the
  * verified-address index when the write created the row or changed its email
  * (linkMemberByVerifiedEmail); a link writes emailLower itself. A failed link
  * is logged and emailLower is still synced; a stale event writes nothing.
+ *
+ * First, when the write took the row away from the user it was linked to
+ * (an unlink, a relink to someone else, or a delete), cancels that row's
+ * pending group-email confirmation links (cancelPendingEmailChanges), so a
+ * later relink can't revive them. A failed cancellation is logged and the
+ * rest still runs; confirming refuses while the row is unlinked anyway.
  */
 export const syncMemberEmailLower = onDocumentWritten(
   'groups/{groupId}/members/{memberId}',
   async (event) => {
     const after = event.data?.after;
+    if (lostItsLink(event.data?.before, after)) {
+      const memberRef = db.doc(
+        `groups/${event.params.groupId}/members/${event.params.memberId}`
+      );
+      try {
+        await cancelPendingEmailChanges(db, memberRef);
+      } catch (error) {
+        console.error(
+          `Cancelling pending email links for ${memberRef.path} failed: ${failureReason(error)}`
+        );
+      }
+    }
     if (!after?.exists) return;
     const data = after.data()!;
     let result: Awaited<ReturnType<typeof linkMemberByVerifiedEmail>> | null =
@@ -1067,10 +1120,9 @@ export const syncMemberEmailLower = onDocumentWritten(
       // The trigger has no retry, so a failed link must not skip the
       // emailLower sync: without emailLower the invite could never be found
       // by linkPendingMembersFor or the duplicate check. Never log the address.
-      const reason =
-        (error as { code?: unknown } | null)?.code ??
-        (error instanceof Error ? error.name : typeof error);
-      console.error(`Linking member ${after.ref.path} failed: ${reason}`);
+      console.error(
+        `Linking member ${after.ref.path} failed: ${failureReason(error)}`
+      );
     }
     if (result === 'linked') return;
     // The event's data is outdated (the row changed again or is gone), so
