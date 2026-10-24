@@ -19,6 +19,14 @@ import { upsertVerifiedEmail } from './verified-emails';
 // engines.node (currently pinned to 22 for exactly this reason - Gen1
 // rejects 24). If this trigger is ever removed, that pin can go too.
 //
+// Gen1 also runs as a different service account from the v2 functions: the
+// App Engine default account (pip-cost-sharing@appspot.gserviceaccount.com),
+// not the Compute default one. It needs roles/datastore.user; without it
+// every run failed with "7 PERMISSION_DENIED: Missing or insufficient
+// permissions." (an IAM denial - the Admin SDK skips rules) from 2026-08-25
+// until 2026-10-24, hidden by the client fallback (see
+// .claude/orphaned-registrations-investigation.md).
+//
 // The profile email is written only when the Auth address is verified
 // (Google sign-ups are; email/password registrations are not yet; see
 // profileEmail in common.ts). Verifying writes it later (account-action ->
