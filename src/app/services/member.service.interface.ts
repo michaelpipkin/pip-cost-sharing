@@ -24,12 +24,6 @@ export interface IMemberService {
     memberRef: DocumentReference<Member>,
     changes: Partial<Member>
   ): Promise<any>;
-  updateMemberWithUserMatching(
-    memberRef: DocumentReference<Member>,
-    changes: Partial<Member>,
-    currentUserRef: DocumentReference<User> | null,
-    currentEmail: string
-  ): Promise<void>;
   requestMemberEmailChange(
     groupId: string,
     memberId: string,

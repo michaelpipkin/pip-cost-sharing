@@ -2,15 +2,11 @@ import { randomUUID } from 'node:crypto';
 // Plain Playwright, not ../fixtures: this spec needs no page or browser.
 import { expect, test } from '@playwright/test';
 import {
-  collection,
   deleteDoc,
   doc,
   getDoc,
-  getDocs,
-  query,
   setDoc,
   updateDoc,
-  where,
   writeBatch,
   type Firestore,
 } from 'firebase/firestore/lite';
@@ -26,8 +22,12 @@ import {
 /**
  * Who may write `users/{uid}` (firestore.rules), checked through the real
  * web SDK on the test emulators (clients from e2e/utils/rules-client.ts):
- * only the owner, except that a group admin may set defaultGroupRef to null
- * on a doc whose default is the admin's group (and change nothing else).
+ * only the owner. A group admin used to be allowed to clear another user's
+ * defaultGroupRef that pointed at the admin's group (group.service
+ * updateGroup, member.service removeMemberFromGroup); those clears now run
+ * in the syncGroupMemberUids and clearDefaultsOnGroupDeactivate triggers
+ * (Admin SDK), and the exception is gone. Reads are checked by
+ * users-read-rules.spec.ts.
  *
  * Every denial is an attack that the old rule (any signed-in user may write
  * any users doc) allowed. Each has a positive control: the same write by the
@@ -38,28 +38,24 @@ import {
 const {
   admin,
   member,
-  adminB,
   own,
   creator,
   batchAdmin,
   batchVictim,
   singleVictim,
   profileVictim,
-  memberVictim,
-  setVictim,
-  comboVictim,
-  bVictim,
 } = USER_RULES.users;
-const { groupA, groupB, groupSecond, groupBatch } = USER_RULES.groups;
+const { groupA, groupBatch } = USER_RULES.groups;
 
 const userDoc = (db: Firestore, uid: string) => doc(db, 'users', uid);
 const groupDoc = (db: Firestore, key: string) => doc(db, 'groups', key);
 
+/** The owner reads their own default (no one else may read the doc). */
 async function defaultGroupId(
-  db: Firestore,
+  ownerDb: Firestore,
   uid: string
 ): Promise<string | null> {
-  const snap = await getDoc(userDoc(db, uid));
+  const snap = await getDoc(userDoc(ownerDb, uid));
   return snap.data()?.['defaultGroupRef']?.id ?? null;
 }
 
@@ -75,27 +71,6 @@ async function resetDefault(
     }),
     `reset ${uid}'s default`
   );
-}
-
-/**
- * group.service.ts updateGroup() for a deactivate or archive, through the
- * client SDK: one writeBatch with the group update and a defaultGroupRef
- * clear on every user whose default is the group.
- */
-async function deactivateInBatch(
-  db: Firestore,
-  groupKey: string,
-  changes: Record<string, unknown>
-): Promise<string[]> {
-  const groupRef = groupDoc(db, groupKey);
-  const batch = writeBatch(db);
-  batch.update(groupRef, changes);
-  const users = await getDocs(
-    query(collection(db, 'users'), where('defaultGroupRef', '==', groupRef))
-  );
-  users.forEach((u) => batch.update(u.ref, { defaultGroupRef: null }));
-  await expectAllowed(batch.commit(), `batch ${JSON.stringify(changes)}`);
-  return users.docs.map((u) => u.id).sort();
 }
 
 test.describe(
@@ -149,52 +124,76 @@ test.describe(
       });
     });
 
-    test("a group admin's deactivate/archive batch clears other users' defaults", async () => {
+    test("a group admin's deactivate/archive batch cannot clear another user's default", async () => {
+      // The batch group.service updateGroup() used to write: the group
+      // update, the admin's own clear and the other user's clear.
       await withUsers(
         [batchAdmin, batchVictim],
         async ([adminDb, victimDb]) => {
-          const expected = [batchAdmin.uid, batchVictim.uid].sort();
+          const groupRef = groupDoc(adminDb!, groupBatch.key);
+          // Reactivate and repoint both defaults, so the test repeats.
+          await expectAllowed(
+            updateDoc(groupRef, { active: true, archived: false })
+          );
+          await resetDefault(adminDb!, batchAdmin.uid, groupBatch.key);
+          await resetDefault(victimDb!, batchVictim.uid, groupBatch.key);
+
           for (const changes of [
             { active: false },
             { archived: true, active: false },
           ]) {
-            // Reactivate and repoint both defaults, so the test repeats.
-            await expectAllowed(
-              updateDoc(groupDoc(adminDb!, groupBatch.key), {
-                active: true,
-                archived: false,
-              })
-            );
-            await resetDefault(adminDb!, batchAdmin.uid, groupBatch.key);
-            await resetDefault(victimDb!, batchVictim.uid, groupBatch.key);
-
-            // The batch holds the group update, the admin's own clear and the
-            // cross-user clear; the rule's get() of the group must still find
-            // the admin in adminUids.
-            expect(
-              await deactivateInBatch(adminDb!, groupBatch.key, changes)
-            ).toEqual(expected);
-            expect(await defaultGroupId(adminDb!, batchVictim.uid)).toBeNull();
-            expect(await defaultGroupId(adminDb!, batchAdmin.uid)).toBeNull();
-            const group = (
-              await getDoc(groupDoc(adminDb!, groupBatch.key))
-            ).data();
-            expect(group?.['active']).toBe(false);
+            const batch = writeBatch(adminDb!);
+            batch.update(groupRef, changes);
+            batch.update(userDoc(adminDb!, batchAdmin.uid), {
+              defaultGroupRef: null,
+            });
+            batch.update(userDoc(adminDb!, batchVictim.uid), {
+              defaultGroupRef: null,
+            });
+            await expectDenied(batch.commit(), JSON.stringify(changes));
           }
+          // The denied batches were atomic: nothing in them landed.
+          expect(await defaultGroupId(victimDb!, batchVictim.uid)).toBe(
+            groupBatch.key
+          );
+          expect(await defaultGroupId(adminDb!, batchAdmin.uid)).toBe(
+            groupBatch.key
+          );
+          expect((await getDoc(groupRef)).data()?.['active']).toBe(true);
+
+          // Positive control: the same batch without the other user's clear
+          // (updateGroup now writes the group update, then the admin's own
+          // default; the trigger clears everyone else's).
+          const batch = writeBatch(adminDb!);
+          batch.update(groupRef, { archived: true, active: false });
+          batch.update(userDoc(adminDb!, batchAdmin.uid), {
+            defaultGroupRef: null,
+          });
+          await expectAllowed(batch.commit(), 'without the cross-user clear');
+          expect((await getDoc(groupRef)).data()?.['active']).toBe(false);
         }
       );
     });
 
-    test("a group admin can clear another user's default that points at their group", async () => {
-      // A single update, as member.service removeMemberFromGroup() writes it.
+    test("a group admin cannot clear another user's default that points at their group", async () => {
+      // A single update, as member.service removeMemberFromGroup() used to
+      // write it (syncGroupMemberUids clears a removed member's default now).
       await withUsers([admin, singleVictim], async ([adminDb, victimDb]) => {
         await resetDefault(victimDb!, singleVictim.uid, groupA.key);
-        await expectAllowed(
+        await expectDenied(
           updateDoc(userDoc(adminDb!, singleVictim.uid), {
             defaultGroupRef: null,
           })
         );
-        expect(await defaultGroupId(adminDb!, singleVictim.uid)).toBeNull();
+        expect(await defaultGroupId(victimDb!, singleVictim.uid)).toBe(
+          groupA.key
+        );
+        // Positive control: the owner may clear it.
+        await expectAllowed(
+          updateDoc(userDoc(victimDb!, singleVictim.uid), {
+            defaultGroupRef: null,
+          })
+        );
         await resetDefault(victimDb!, singleVictim.uid, groupA.key);
       });
     });
@@ -310,117 +309,6 @@ test.describe(
           setDoc(userDoc(db, `u-user-rules-${randomUUID()}`), body)
         );
         // Positive control: creating one's own doc is allowed (the creator test).
-      });
-    });
-
-    test("a plain member cannot clear another user's default group", async () => {
-      await withUsers(
-        [member, admin, memberVictim],
-        async ([memberDb, adminDb, victimDb]) => {
-          await resetDefault(victimDb!, memberVictim.uid, groupA.key);
-          await expectDenied(
-            updateDoc(userDoc(memberDb!, memberVictim.uid), {
-              defaultGroupRef: null,
-            })
-          );
-          const batch = writeBatch(memberDb!);
-          batch.update(userDoc(memberDb!, memberVictim.uid), {
-            defaultGroupRef: null,
-          });
-          await expectDenied(batch.commit(), 'in a batch');
-          expect(await defaultGroupId(victimDb!, memberVictim.uid)).toBe(
-            groupA.key
-          );
-          // Positive control: the group's admin may.
-          await expectAllowed(
-            updateDoc(userDoc(adminDb!, memberVictim.uid), {
-              defaultGroupRef: null,
-            })
-          );
-          await resetDefault(victimDb!, memberVictim.uid, groupA.key);
-        }
-      );
-    });
-
-    test('an admin of one group cannot clear a default that points at another group', async () => {
-      // user-rules-admin is admin of A but only a plain member of B.
-      await withUsers(
-        [admin, adminB, bVictim],
-        async ([adminDb, adminBDb, victimDb]) => {
-          await resetDefault(victimDb!, bVictim.uid, groupB.key);
-          await expectDenied(
-            updateDoc(userDoc(adminDb!, bVictim.uid), { defaultGroupRef: null })
-          );
-          expect(await defaultGroupId(victimDb!, bVictim.uid)).toBe(groupB.key);
-          // Positive control: B's admin may.
-          await expectAllowed(
-            updateDoc(userDoc(adminBDb!, bVictim.uid), {
-              defaultGroupRef: null,
-            })
-          );
-          await resetDefault(victimDb!, bVictim.uid, groupB.key);
-        }
-      );
-    });
-
-    test("a group admin cannot point another user's default at a group", async () => {
-      // user-rules-admin is admin of both A (the victim's default) and Second.
-      await withUsers([admin, setVictim], async ([adminDb, victimDb]) => {
-        await resetDefault(victimDb!, setVictim.uid, groupA.key);
-        await expectDenied(
-          updateDoc(userDoc(adminDb!, setVictim.uid), {
-            defaultGroupRef: groupDoc(adminDb!, groupSecond.key),
-          }),
-          'to Second'
-        );
-        expect(await defaultGroupId(victimDb!, setVictim.uid)).toBe(groupA.key);
-        // A doc whose default is already null cannot be pointed at a group
-        // either (there is no current group to be admin of).
-        await expectAllowed(
-          updateDoc(userDoc(victimDb!, setVictim.uid), {
-            defaultGroupRef: null,
-          })
-        );
-        await expectDenied(
-          updateDoc(userDoc(adminDb!, setVictim.uid), {
-            defaultGroupRef: groupDoc(adminDb!, groupA.key),
-          }),
-          'from null to A'
-        );
-        // Positive control: the owner may.
-        await expectAllowed(
-          updateDoc(userDoc(victimDb!, setVictim.uid), {
-            defaultGroupRef: groupDoc(victimDb!, groupSecond.key),
-          })
-        );
-        await resetDefault(victimDb!, setVictim.uid, groupA.key);
-      });
-    });
-
-    test("a group admin cannot clear another user's default together with another field", async () => {
-      await withUsers([admin, comboVictim], async ([adminDb, victimDb]) => {
-        await resetDefault(victimDb!, comboVictim.uid, groupA.key);
-        const ref = userDoc(adminDb!, comboVictim.uid);
-        const extras = [
-          { venmoId: '@ur-attacker' },
-          { emailOptOut: true },
-          { email: 'user-rules-admin@pipsplit.test' },
-          { receiptPolicy: true },
-        ];
-        expect(
-          await notDenied(
-            extras.map((extra) => [
-              JSON.stringify(extra),
-              () => updateDoc(ref, { defaultGroupRef: null, ...extra }),
-            ])
-          )
-        ).toEqual([]);
-        expect(await defaultGroupId(victimDb!, comboVictim.uid)).toBe(
-          groupA.key
-        );
-        // Positive control: the clear on its own is allowed.
-        await expectAllowed(updateDoc(ref, { defaultGroupRef: null }));
-        await resetDefault(victimDb!, comboVictim.uid, groupA.key);
       });
     });
   }

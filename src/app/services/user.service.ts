@@ -5,6 +5,7 @@ import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snac
 import { LoadingService } from '@components/loading/loading.service';
 import { ROUTE_PATHS } from '@constants/routes.constants';
 import { Member } from '@models/member';
+import { PaymentMethods } from '@models/payment-methods';
 import { User } from '@models/user';
 import { AnalyticsService } from '@services/analytics.service';
 import { AppCheckErrorHandlerService } from '@services/app-check-error-handler.service';
@@ -634,41 +635,22 @@ export class UserService implements IUserService {
     }
   }
 
+  // The payee's handles come from a callable that checks the caller is an
+  // active member of the group: a client can read only its own users doc.
+  // Failures are not logged here: the caller treats the daily-limit refusal
+  // as an outcome and logs any other failure itself.
   async getPaymentMethods(
     memberRef: DocumentReference<Member>
-  ): Promise<object> {
-    try {
-      const memberDoc = await getDoc(memberRef);
-      if (!memberDoc.exists()) {
-        return {};
-      }
-
-      const userRef = memberDoc.data()?.userRef;
-      if (!userRef) {
-        return {};
-      }
-      const userDocSnap = await getDoc(userRef);
-
-      if (userDocSnap.exists()) {
-        const data = userDocSnap.data();
-        return {
-          venmoId: data.venmoId ?? '',
-          paypalId: data.paypalId ?? '',
-          cashAppId: data.cashAppId ?? '',
-          zelleId: data.zelleId ?? '',
-        };
-      } else {
-        return {};
-      }
-    } catch (error) {
-      this.analytics.logError(
-        'User Service',
-        'getPaymentMethods',
-        'Failed to get payment methods',
-        error instanceof Error ? error.message : 'Unknown error'
-      );
-      throw error;
-    }
+  ): Promise<PaymentMethods> {
+    const fn = httpsCallable<
+      { groupId: string; memberId: string },
+      PaymentMethods
+    >(this.functions, 'getMemberPaymentMethods');
+    const { data } = await fn({
+      groupId: memberRef.parent.parent!.id,
+      memberId: memberRef.id,
+    });
+    return data;
   }
 
   // Group emails are built and addressed server-side (functions/src/

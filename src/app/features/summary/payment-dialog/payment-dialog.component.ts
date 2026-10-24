@@ -6,6 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
+import { PaymentMethods } from '@models/payment-methods';
 import { AnalyticsService } from '@services/analytics.service';
 
 @Component({
@@ -53,10 +54,4 @@ export class PaymentDialogComponent {
   }
 }
 
-type paymentData = {
-  payToMemberName: string;
-  venmoId: string;
-  paypalId: string;
-  cashAppId: string;
-  zelleId: string;
-};
+type paymentData = PaymentMethods & { payToMemberName: string };

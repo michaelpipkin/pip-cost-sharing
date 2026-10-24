@@ -2,11 +2,13 @@ import { createHash, randomUUID } from 'node:crypto';
 import { getAuth } from 'firebase-admin/auth';
 import {
   getFirestore,
+  Query,
   Timestamp,
   type DocumentData,
   type DocumentReference,
 } from 'firebase-admin/firestore';
 import { describe, expect, it, vi } from 'vitest';
+import { verifiedEmailId } from './email-identity';
 // Importing from index both initialises the Admin SDK and proves the
 // callables are exported from the functions entry (so they deploy).
 import {
@@ -33,6 +35,7 @@ import {
   VERIFY_LOGIN_EMAIL,
 } from './member-email';
 import { makeGroup, makeMember, uniqueId } from './test-fixtures';
+import { ownerOf, VERIFIED_EMAILS } from './verified-emails';
 
 const db = getFirestore();
 
@@ -640,6 +643,56 @@ describe('confirmMemberEmailChange', () => {
       code: 'failed-precondition',
       message: CONFIRM_LINK_INVALID,
     });
+  });
+
+  it("indexes the confirmed address for the caller with source 'group-confirm'", async () => {
+    const p = await pending();
+
+    await call(confirmMemberEmailChange, p.uid, { token: p.token });
+
+    expect(await ownerOf(db, p.newEmail)).toBe(p.uid);
+    const entry = await db
+      .collection(VERIFIED_EMAILS)
+      .doc(verifiedEmailId(p.newEmail))
+      .get();
+    expect(entry.data()?.['source']).toBe('group-confirm');
+  });
+
+  it('links a pending row in another group that was invited under the confirmed address', async () => {
+    const p = await pending();
+    const otherGroup = await makeGroup();
+    const invited = await makeMember(otherGroup, {
+      email: p.newEmail,
+      emailLower: p.newEmail.toLowerCase(),
+      userRef: null,
+    });
+
+    await call(confirmMemberEmailChange, p.uid, { token: p.token });
+
+    expect((await invited.get()).data()?.['userRef']?.id).toBe(p.uid);
+  });
+
+  it('still confirms when linking the pending rows fails afterwards', async () => {
+    const p = await pending();
+    const invited = await makeMember(await makeGroup(), {
+      email: p.newEmail,
+      emailLower: p.newEmail.toLowerCase(),
+      userRef: null,
+    });
+    // The confirm transaction reads with txn.get; only the linker, after the
+    // commit, reads with Query.get.
+    vi.spyOn(Query.prototype, 'get').mockRejectedValue(new Error('link down'));
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      await expect(
+        call(confirmMemberEmailChange, p.uid, { token: p.token })
+      ).resolves.toEqual({ groupId: p.groupRef.id, email: p.newEmail });
+    } finally {
+      vi.restoreAllMocks();
+    }
+    expect(log).toHaveBeenCalled();
+    expect(await ownerOf(db, p.newEmail)).toBe(p.uid);
+    expect((await invited.get()).data()?.['userRef']).toBeNull();
   });
 
   it('refuses an unknown or malformed token', async () => {

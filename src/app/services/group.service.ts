@@ -23,13 +23,13 @@ import {
   doc,
   DocumentReference,
   getDoc,
-  getDocs,
   getFirestore,
   onSnapshot,
   orderBy,
   query,
   QuerySnapshot,
   setDoc,
+  updateDoc,
   where,
   writeBatch,
 } from 'firebase/firestore';
@@ -327,6 +327,11 @@ export class GroupService implements IGroupService {
   // silently re-select it in autoSelectGroup's `else if (defaultGroupRef)`
   // branch. This can otherwise race the member-doc write's own listener
   // firing before this user's local defaultGroupRef gets cleared elsewhere.
+  // And self-heals a default that points at an INACTIVE group (deactivated or
+  // archived) while the membership is active: the
+  // clearDefaultsOnGroupDeactivate trigger clears every default when the group
+  // is deactivated, but a default set afterwards, or one the trigger has not
+  // reached yet, must not re-select a dead group.
   private async resolveDefaultGroupRef(
     defaultGroupRef: DocumentReference<Group> | null,
     groups: Group[],
@@ -336,7 +341,10 @@ export class GroupService implements IGroupService {
       ? groups.find((g) => g.ref?.eq(defaultGroupRef))
       : undefined;
 
-    if (defaultGroupRef && !matchingGroup?.userActiveInGroup) {
+    if (
+      defaultGroupRef &&
+      (!matchingGroup?.userActiveInGroup || matchingGroup.active === false)
+    ) {
       await setDoc(userRef, { defaultGroupRef: null }, { merge: true });
       this.userStore.updateUser({ defaultGroupRef: null });
       return null;
@@ -420,6 +428,22 @@ export class GroupService implements IGroupService {
     this.groupStore.clearCurrentGroup(skipAutoSelect);
     localStorage.removeItem('currentGroup');
     this.clearCurrentGroupData();
+  }
+
+  /**
+   * After the user leaves `groupId`: if it is still the current group, stops
+   * its data listeners and empties the per-group stores, so nothing keeps
+   * reading (or showing) it. Unlike clearCurrentGroup(), it does not cancel a
+   * selection already loading: leaving fires the members listener, whose
+   * auto-select may have started loading the replacement group, and
+   * cancelling that would leave the app with no group until some later
+   * snapshot happened to retry. The auto-select also covers having no
+   * replacement (it clears the selection itself).
+   */
+  releaseLeftGroup(groupId: string): void {
+    if (this.groupStore.currentGroup()?.id === groupId) {
+      this.clearCurrentGroupData();
+    }
   }
 
   // Makes any in-flight getGroup() call stale, so it can't select its group
@@ -591,28 +615,14 @@ export class GroupService implements IGroupService {
     groupRef: DocumentReference<Group>,
     changes: Partial<Group>
   ): Promise<void> {
-    const batch = writeBatch(this.fs);
-    batch.update(groupRef, changes);
+    await updateDoc(groupRef, changes);
 
     // Only an explicit deactivate or archive counts. A change that leaves
     // `active` out (a rename, or unarchiving - which deliberately keeps the
     // group inactive until an admin reactivates it) is an ordinary update.
+    // Everyone's default pointing at the group is cleared by the
+    // clearDefaultsOnGroupDeactivate trigger, not from this client.
     const deactivating = changes.active === false || changes.archived === true;
-
-    // If deactivating or archiving the group, clear it as default for all users
-    if (deactivating) {
-      const usersRef = collection(this.fs, 'users');
-      const usersQuery = query(
-        usersRef,
-        where('defaultGroupRef', '==', groupRef)
-      );
-      const users = await getDocs(usersQuery);
-      users.forEach((u) => {
-        batch.update(u.ref, { defaultGroupRef: null });
-      });
-    }
-
-    await batch.commit();
 
     // Unselect it if it's the current group - only once the change is saved
     if (deactivating && this.groupStore.currentGroup()?.id === groupRef.id) {

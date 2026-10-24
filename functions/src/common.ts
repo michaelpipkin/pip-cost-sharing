@@ -19,6 +19,21 @@ export const callableAppCheck = {
   enforceAppCheck: process.env.FUNCTIONS_EMULATOR !== 'true',
 } satisfies CallableOptions;
 
+/**
+ * A string usable as a single Firestore document id: no `/`, and not one of
+ * the reserved ids (`.`, `..`, `__x__`) the backend would reject as an
+ * `internal` error.
+ */
+export function isDocId(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    value.length > 0 &&
+    value.length <= 1500 &&
+    !value.includes('/') &&
+    !/^\.\.?$|^__.*__$/.test(value)
+  );
+}
+
 // The app's public origin, for links in emails. Mirrors BASE_URL in
 // src/app/services/page-title-strategy.service.ts: the two projects don't
 // share a path-mapped module, so this one constant is deliberately
@@ -105,9 +120,13 @@ export async function onePerGroupLinks<
   return candidates.filter((_, i) => existing[i]!.empty);
 }
 
-// normalizeEmail and profileEmail live in a dependency-free module so the
-// admin scripts can import them too.
-export { normalizeEmail, profileEmail } from './email-identity';
+// normalizeEmail, profileEmail and verifiedEmailId live in a dependency-free
+// module so the admin scripts can import them too.
+export {
+  normalizeEmail,
+  profileEmail,
+  verifiedEmailId,
+} from './email-identity';
 
 // Auth accounts that will never have (or need) a Firestore users doc, so
 // they're false positives in any "orphaned registration" query rather than

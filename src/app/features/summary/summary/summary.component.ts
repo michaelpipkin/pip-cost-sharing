@@ -36,6 +36,7 @@ import { AmountDue } from '@models/amount-due';
 import { Category } from '@models/category';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
+import { PaymentMethods } from '@models/payment-methods';
 import { Split } from '@models/split';
 import { AnalyticsService } from '@services/analytics.service';
 import { AppCheckErrorHandlerService } from '@services/app-check-error-handler.service';
@@ -423,23 +424,30 @@ export class SummaryComponent {
         (s.owedByMemberRef.eq(owedToMemberRef) &&
           s.paidByMemberRef.eq(owedByMemberRef))
     );
-    let paymentMethods = {};
+    let paymentMethods: PaymentMethods;
     this.loading.loadingOn();
     try {
       paymentMethods =
         await this.userService.getPaymentMethods(owedToMemberRef);
     } catch (error) {
-      this.analytics.logError(
-        'Summary Component',
-        'load_payment_methods',
-        'Failed to load payment methods',
-        error instanceof Error ? error.message : 'Unknown error'
+      const { code, message } = callableError(error);
+      // The daily lookup limit is an outcome, not a failure: the server's
+      // message says when to try again, and nothing is logged.
+      const limitReached = code === 'functions/resource-exhausted';
+      if (!limitReached) {
+        this.analytics.logError(
+          'Summary Component',
+          'load_payment_methods',
+          'Failed to load payment methods',
+          error instanceof Error ? error.message : 'Unknown error'
+        );
+      }
+      this.appCheckErrorHandler.handle(
+        error,
+        limitReached
+          ? message
+          : 'Could not load payment methods. Please try again.'
       );
-      this.snackbar.openFromComponent(CustomSnackbarComponent, {
-        data: {
-          message: 'Could not load payment methods. Please try again.',
-        },
-      });
       return;
     } finally {
       this.loading.loadingOff();

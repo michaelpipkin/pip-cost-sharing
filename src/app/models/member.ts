@@ -35,9 +35,12 @@ export class Member {
   active!: boolean;
   groupAdmin!: boolean;
   // True if the member left the group voluntarily via leaveGroup() (as
-  // opposed to being deactivated by an admin). Locks the Active toggle in
-  // the edit-member dialog until the member rejoins themselves from their
-  // own account settings. Undefined/missing is treated as false.
+  // opposed to being deactivated by an admin). The row is kept (it blocks a
+  // re-invite), and until the member rejoins themselves from their own
+  // account settings no one else may change it beyond a rename or delete it
+  // (firestore.rules leftRowUpdateValid): the edit-member dialog locks its
+  // Active and Group Admin toggles and hides Remove. Undefined/missing is
+  // treated as false.
   leftGroup?: boolean;
   invite?: MemberInvite;
   ref?: DocumentReference<Member>;
