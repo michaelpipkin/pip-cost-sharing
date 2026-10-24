@@ -846,7 +846,9 @@ members whose email isn't their account's verified address for manual
 review (it never unlinks). Dry-run it before the release; `-- --apply` only
 after B14 is deployed (an old client would rewrite the unverified address);
 run `repairOrphanedMembers` / `link-orphaned-members` only after it. Proved
-on the test emulators only; not yet run against production.
+on the test emulators first; the owner has since run it against production
+with `--apply`, along with the post-deploy `member-email-mismatch` audit
+(confirmed 2026-10-24).
 
 Fix round 1 (2026-10-22): the client's no-profile fallback now creates the
 doc with '' and stores the address through the token-refreshing sync (a

@@ -122,6 +122,7 @@
 <p class="note">B1, B12, B13 and B14 are fixed (security; see "Phase A close-out"). Also still open, none blocking: cross-spec interference risk from the <code>syncAuthEmailsToUsers</code> spec rewriting every <code>users</code> email in the shared emulator; <code>account-preferences</code> <code>isDirty</code> is not cleared after a save (observation, not pinned); optional minors n2-n4 from the B14 re-review.</p>
 
 <h2>Plan 4 — owner pre-release checklist (in this order)</h2>
+<p class="note">Done: Plan 4 shipped in PR #720 (2026-10-22). The owner confirmed on 2026-10-24 that the <code>clear-unverified-profile-emails --apply</code> cleanup (step 8) and the <code>member-email-mismatch</code> re-run (step 9) were done.</p>
 <p>The branch changes Firestore rules, Cloud Functions and the app together (B1, B12, B13, B14, B19, C1, I1, I2). Do these in order:</p>
 <ol>
   <li><strong>Run the email audit</strong> (read-only, production): <code>pnpm query audit-invalid-emails</code>. It lists Auth users, <code>users</code> docs and members whose email fails the single-valid-address rule. Those addresses can no longer be changed to another bad value and are skipped by every server email; decide whether any need manual repair. An Auth user it lists is NOT locked out of sign-in (I1 is fixed, <code>6101432a</code>: the profile sync is skipped for an address that fails the pattern, and a failed sync no longer blocks sign-in).</li>
