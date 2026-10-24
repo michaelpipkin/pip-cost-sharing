@@ -1003,6 +1003,28 @@ direct-SDK attacks after the read half merged:
 The self-delete clause on `members` is gone as well. Nothing in the app uses
 it any more, and a direct self-delete would orphan the member's splits.
 
+### Unlinking cancels pending group-email links (2026-10-24, branch `unlink-cancels-email-links`)
+
+Not yet merged or deployed. The last open follow-up from the read half: an
+admin could unlink a row, change its email to another address the same user
+had proven, and the member trigger relinked it, after which that user's old
+pending group-email confirmation link for the row worked again
+(`confirmMemberEmailChange` checks only that the row is the caller's now).
+
+- `syncMemberEmailLower` now calls `cancelPendingEmailChanges`
+  (`member-email.ts`) whenever a write takes the row away from the user it
+  was linked to: an unlink, a relink to another user, or a delete. It runs
+  before the relinking step, so it works whichever order the unlink and
+  re-address events arrive in. A failure is logged (and so reaches the
+  function-error alert); confirming refuses while the row is unlinked anyway.
+- `requestMemberEmailChange` re-reads the row inside the transaction that
+  creates the token, so an unlink racing the request either refuses it or
+  waits for it and then cancels the new token.
+
+Tests: `functions/src/member-email.spec.ts`, "unlinking cancels pending
+confirmation links" (six of its seven tests failed against the old code).
+Functions only; no rules, app or data change.
+
 ## Sequencing note
 
 (Historical: every phase has shipped. Kept as the reasoning behind the order.)

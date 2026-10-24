@@ -235,6 +235,27 @@ async function pendingTokensOf(
 }
 
 /**
+ * Deletes the member's pending confirmation links. syncMemberEmailLower calls
+ * it when the row stops being linked to the user who asked: confirming checks
+ * only that the row is the caller's now, so a row unlinked, given another
+ * address the same user proved, and relinked by the trigger would otherwise
+ * honor the old link again.
+ */
+export async function cancelPendingEmailChanges(
+  db: Firestore,
+  memberRef: DocumentReference
+): Promise<void> {
+  const snap = await db
+    .collection(MEMBER_EMAIL_TOKENS)
+    .where('memberRef', '==', memberRef)
+    .get();
+  if (snap.empty) return;
+  const batch = db.batch();
+  for (const doc of snap.docs) batch.delete(doc.ref);
+  await batch.commit();
+}
+
+/**
  * The caller's Auth address (as stored) when it is verified; null when it is
  * not, or when the account does not exist. Any other lookup failure throws
  * `unavailable`.
@@ -391,9 +412,17 @@ export const requestMemberEmailChange = onCall<{
     const mailRef = db.collection('mail').doc();
     // One transaction, so two concurrent requests can't both leave a live
     // link behind (M1): the earlier tokens are read and deleted with the
-    // new one's creation.
+    // new one's creation. It re-reads the row too: an unlink that landed
+    // after the read above is refused here, and one that comes later waits
+    // for this commit, so its trigger (cancelPendingEmailChanges) sees the
+    // new link.
     await db
       .runTransaction(async (txn) => {
+        const fresh = await txn.get(memberRef);
+        if (!isLinkedTo(fresh.data(), uid)) {
+          throw new HttpsError('permission-denied', 'Not your member record');
+        }
+        assertActive(fresh.data());
         await assertNoOtherMemberHas((q) => txn.get(q), memberRef, emailLower);
         assertNotCoolingDown(await txn.get(cooldownRef), nowMs);
         const earlier = await pendingTokensOf(txn, memberRef);
