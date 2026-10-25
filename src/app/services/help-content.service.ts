@@ -15,7 +15,7 @@ export class HelpContentService {
       id: 'groups',
       title: 'Groups',
       content: [
-        'In order to use this app, you must be a member of at least one group. Group admins add members by email address, and your account will be automatically linked when you register with the same email.',
+        "In order to use this app, you must be a member of at least one group. Group admins add members by email address. If the address is one you've verified, your account is linked to that member automatically; if not, it's linked as soon as you register with that email. See Members for which addresses count as verified.",
         'If you need to create a new group, click the New Group button. Enter the group name, select a currency, and enter your display name for the group. Be aware that the group currency cannot be changed after any expenses have been saved for the group.',
         'You will automatically be made an admin for any group you create.',
         "You can manage all groups for which you are a group admin by clicking the Manage Groups button. From here, you can change the group name, currency (if no expenses exist), or make it inactive. Inactive groups won't show up in the Select Group dropdown list on the groups page.",
@@ -27,11 +27,13 @@ export class HelpContentService {
       id: 'members',
       title: 'Members',
       content: [
-        'Group members can click on their own name in the members list to update their display name and email address for the group. By default, your email address is set to your login email address. However, this can be updated individually for each group without affecting your login email address. A new group email takes effect once you confirm it through the link we email to that address, and group emails (payment requests and payment notices) go to it.',
-        'Group admins can add members by clicking the Add Member button. Enter the display name and email address for the new member. If someone registers for the app with the same email address, their account will be automatically linked to the member record.',
-        "Group admins can edit all group members, change their active status, and give or remove admin rights to other members. An admin may not remove their own admin rights - another admin must perform that update. Once a member is linked to their account, only that member can change their email address.",
+        'Group members can click on their own name in the members list to update their display name and email address for the group. By default, your group email is your login email address, but you can use a different address in each group without affecting your login email. Group emails (payment requests and payment notices) go to this address.',
+        "Changing your group email to your login email takes effect right away. Any other address needs confirmation: when you save it, we email a confirmation link to that address. The change takes effect when you open that link while signed in to your account, and the link expires after 24 hours. Until then, the group keeps using your current address. You'll need to verify your login email before you can change a group email.",
+        "Your verified email addresses are your login email (including login emails you've used before) and every group email you've confirmed. A group admin can add you to a group with any of them, and your account is linked to that member automatically.",
+        "Group admins can add members by clicking the Add Member button. Enter the display name and, optionally, an email address for the new member. If the address is one of someone's verified addresses, their account is linked to the new member right away. Otherwise, it's linked when they register for the app with that address, or later confirm it as a group email. Each person can be linked to only one member per group, so a second member for someone who's already in the group isn't linked.",
+        "Group admins can edit all group members, change their active status, and give or remove admin rights to other members. An admin may not remove their own admin rights - another admin must perform that update. Admins can change a member's email address only until it's linked to an account; after that, only that member can change it.",
         "Group members can only be removed if they don't have any expenses/splits assigned to them. Group members who are made inactive will no longer show up in the dropdown list when creating a new expense.",
-        "Group admins can invite members who haven't registered yet by clicking the send-email icon in the Invite to App column. The icon only appears for active members with a valid email address who have no account yet, and is hidden again for 24 hours after an invitation is sent (or until the member's email address changes).",
+        "Group admins can invite members who aren't linked to an account yet by clicking the send-email icon in the Invite to App column. The icon only appears for active members with a valid email address who aren't linked to an account, and is hidden again for 24 hours after an invitation is sent (or until the member's email address changes).",
       ],
     },
     {

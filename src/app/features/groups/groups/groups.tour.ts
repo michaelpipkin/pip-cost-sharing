@@ -24,7 +24,7 @@ export function buildGroupsTourSteps(hooks: GroupsTourHooks): GuidedTourStep[] {
       id: 'intro',
       title: 'Groups',
       text:
-        'A group is the set of people you share expenses with: roommates, a trip, a household. Group admins add members by email, and your account is linked automatically when you register with that email.' +
+        "A group is the set of people you share expenses with: roommates, a trip, a household. Group admins add members by email, and your account is linked automatically when that email is one you've verified: your login email or a group email you've confirmed." +
         (hooks.usingSample()
           ? " You don't have any groups yet, so the tour shows two samples."
           : ''),

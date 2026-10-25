@@ -41,8 +41,9 @@
         aria-label="Member email"
       />
       <mat-hint>
-        Optional. A member can only access and interact with this group if this
-        matches the email address they used to register for the app.
+        Optional. Use any address they've verified (their login email or a
+        group email they've confirmed) so their account is linked to this
+        member.
       </mat-hint>
       @for (
         error of addMemberForm.email().errors();
