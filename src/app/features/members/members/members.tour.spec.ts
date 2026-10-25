@@ -69,12 +69,24 @@ describe('buildMembersTourSteps', () => {
   // takes effect once confirmed.
   it("should say who can change a member's email", () => {
     expect(step('edit-member').text).toBe(
-      "Admins can change a member's name for this group, and their email until they register. After that, only the member can change it."
+      "Admins can change a member's name for this group, and their email until it's linked to an account. After that, only the member can change it."
     );
     hooks.isAdmin.mockReturnValue(false);
     expect(step('edit-member').text).toBe(
-      "Change the name and email address you use in this group. This email is just for the group; it doesn't change your login email. A new address takes effect once you confirm the link we send to it."
+      "Change the name and email address you use in this group. This email is just for the group; it doesn't change your login email. A new address takes effect once you confirm the link we send to it, and then group admins can add you by it too."
     );
+  });
+
+  // A member links by any address the person has verified, not only the
+  // one they registered with.
+  it('should say a member links by any verified address', () => {
+    expect(step('intro').text).toContain(
+      "its email is one they've verified: their login email or a group email they've confirmed"
+    );
+    expect(step('add-member-fields').text).toContain(
+      "Any address they've verified works"
+    );
+    expect(step('invite').text).toContain("isn't linked to an account yet");
   });
 
   it('should mention the samples only when showing them', () => {

@@ -47,6 +47,27 @@ describe('HelpContentService', () => {
     });
   });
 
+  describe('members section', () => {
+    const text = () => service.getHelpSection('members')!.content.join(' ');
+
+    it('should explain that a new group email needs confirming, except the login email', () => {
+      expect(text()).toContain(
+        'Changing your group email to your login email takes effect right away.'
+      );
+      expect(text()).toContain('we email a confirmation link to that address');
+      expect(text()).toContain('the link expires after 24 hours');
+    });
+
+    it('should explain that admins can add someone by any verified address', () => {
+      expect(text()).toContain(
+        "Your verified email addresses are your login email (including login emails you've used before) and every group email you've confirmed."
+      );
+      expect(text()).toContain(
+        "If the address is one of someone's verified addresses, their account is linked to the new member right away."
+      );
+    });
+  });
+
   describe('getAllHelpSections', () => {
     it('should return all sections', () => {
       const sections = service.getAllHelpSections();

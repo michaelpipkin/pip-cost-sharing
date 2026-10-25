@@ -29,7 +29,7 @@ export function buildMembersTourSteps(
       id: 'intro',
       title: 'Members',
       text:
-        'Members are the people in this group who share its expenses. Anyone who registers with the email address on their member record is linked to it automatically.' +
+        "Members are the people in this group who share its expenses. A member is linked to someone's account automatically when its email is one they've verified: their login email or a group email they've confirmed." +
         (hooks.usingSample()
           ? " You're the only member so far, so the tour adds a few samples."
           : ''),
@@ -59,7 +59,7 @@ export function buildMembersTourSteps(
     {
       id: 'invite',
       title: 'Invite to the app',
-      text: "The envelope sends an invitation email to an active member who hasn't registered yet. It's hidden for 24 hours after an invitation is sent, or until their email address changes.",
+      text: "The envelope sends an invitation email to an active member who isn't linked to an account yet. It's hidden for 24 hours after an invitation is sent, or until their email address changes.",
       target: 'invite-column',
       placement: 'left',
       when: () => isAdmin() && hooks.inviteColumnShown(),
@@ -76,7 +76,7 @@ export function buildMembersTourSteps(
     {
       id: 'add-member-fields',
       title: 'Name and email',
-      text: 'Enter their name and email address. When they register with that email, their account is linked to this member automatically.',
+      text: "Enter their name and, optionally, their email. Any address they've verified works, including a group email they use somewhere else. If they already have an account, it's linked right away; if not, it's linked when they register with that email.",
       target: 'add-member-fields',
       placement: 'right',
       when: isAdmin,
@@ -86,8 +86,8 @@ export function buildMembersTourSteps(
       id: 'edit-member',
       title: admin ? 'Edit a member' : 'Edit your details',
       text: admin
-        ? "Admins can change a member's name for this group, and their email until they register. After that, only the member can change it."
-        : "Change the name and email address you use in this group. This email is just for the group; it doesn't change your login email. A new address takes effect once you confirm the link we send to it.",
+        ? "Admins can change a member's name for this group, and their email until it's linked to an account. After that, only the member can change it."
+        : "Change the name and email address you use in this group. This email is just for the group; it doesn't change your login email. A new address takes effect once you confirm the link we send to it, and then group admins can add you by it too.",
       target: 'edit-member-fields',
       placement: 'right',
       beforeShow: inEditMember,
