@@ -2,9 +2,12 @@ updateConfig:
   ignoreDependencies:
     - typescript
 overrides:
+  body-parser: '>=2.4.0 <3'
   brace-expansion: '>=5.0.8 <6'
   browserslist: '>=4.28.7 <5'
+  fast-uri: '>=3.1.9 <4'
   js-yaml: '>=3.15.1 <4'
+  nodemailer: '>=10.1.4 <11'
   uuid: '>=11.1.1 <12'
 allowBuilds:
   '@firebase/util': true
