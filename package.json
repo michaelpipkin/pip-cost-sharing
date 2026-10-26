@@ -38,16 +38,16 @@
   },
   "private": true,
   "dependencies": {
-    "@angular/cdk": "^22.2.3",
+    "@angular/cdk": "^22.2.4",
     "@angular/common": "^22.2.3",
     "@angular/compiler": "^22.2.3",
     "@angular/core": "^22.2.3",
     "@angular/forms": "^22.2.3",
-    "@angular/material": "^22.2.3",
+    "@angular/material": "^22.2.4",
     "@angular/platform-browser": "^22.2.3",
     "@angular/platform-server": "^22.2.3",
     "@angular/router": "^22.2.3",
-    "@angular/ssr": "^22.2.3",
+    "@angular/ssr": "^22.2.4",
     "@capacitor-community/admob": "^8.2.1",
     "@capacitor-firebase/analytics": "^8.5.2",
     "@capacitor-firebase/app-check": "8.5.2",
@@ -64,24 +64,24 @@
     "@ngx-translate/core": "^18.0.0",
     "@ngx-translate/http-loader": "^18.0.0",
     "bootstrap": "^5.3.8",
-    "firebase": "^13.0.0",
+    "firebase": "^13.1.0",
     "moment": "^2.31.0",
     "replace-in-file": "^9.0.0",
     "tslib": "^2.8.1"
   },
   "devDependencies": {
-    "@angular/build": "^22.2.3",
-    "@angular/cli": "^22.2.3",
+    "@angular/build": "^22.2.4",
+    "@angular/cli": "^22.2.4",
     "@angular/compiler-cli": "^22.2.3",
     "@capacitor/assets": "^3.0.5",
     "@playwright/test": "^1.64.1",
     "@types/node": "^26.6.5",
-    "@typescript-eslint/eslint-plugin": "^8.71.2",
-    "@typescript-eslint/parser": "^8.71.2",
+    "@typescript-eslint/eslint-plugin": "^8.72.0",
+    "@typescript-eslint/parser": "^8.72.0",
     "@vitest/coverage-v8": "^5.0.5",
     "concurrently": "^10.0.6",
     "dependabot-agent": "^1.2.0",
-    "dotenv": "^18.0.8",
+    "dotenv": "^18.0.9",
     "eslint": "^10.13.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-unused-imports": "^4.4.1",
@@ -95,7 +95,7 @@
     "wait-on": "^9.5.1"
   },
   "optionalDependencies": {
-    "@rollup/rollup-linux-x64-gnu": "^4.64.9",
-    "@rollup/rollup-win32-x64-msvc": "^4.64.9"
+    "@rollup/rollup-linux-x64-gnu": "^4.65.0",
+    "@rollup/rollup-win32-x64-msvc": "^4.65.0"
   }
 }
