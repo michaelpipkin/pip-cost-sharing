@@ -340,6 +340,31 @@ hard minimum-version gate, plus reverting the concurrent
 dev-server analytics gate (`!environment.useEmulators`); a `dismissed`
 event for the update dialog if tap-through matters.
 
+## SNAPSHOT 2026-10-30 (12 days after baseline) - main question answered
+
+- **New-user first-launch throttling is effectively gone.** Firestore
+  `app_errors` has had no App Check entry since 10/19 14:26 ET (one
+  reCAPTCHA 1.2.0 session); early October ran ~1-3 throttled sessions/day.
+  Since 10/24: 18 signups, 0 orphaned, and **new installs land on 1.3.1**
+  (62 of 66 `first_open` on 1.3.1; 3 on 1.2.0, 1 on 1.1.7). The remaining
+  reCAPTCHA population is existing users on 1.2.0/1.1.7, who mostly
+  already hold a token.
+- **Play Integrity (Android 1.3.1):** since 10/24, 26 ready events / 20 users,
+  0 failed. Cumulative since 10/10: 64 ready, 4 failed (one user,
+  "Too many attempts.", likely a non-Play build).
+- **`app_check_status` for reCAPTCHA/1.2.0 has dried up** (0 events since
+  10/24; 8 total) - no longer a usable denominator for a reCAPTCHA failure
+  rate. Use `app_errors` entries as the failure signal instead.
+- **Android 14-day active users (10/17-10/30):** 1.3.1 = 142, 1.2.0 = 106,
+  1.1.7 = 36 -> 1.3.1 ~50% of distinct users (was ~20% on 10/18).
+- **Update dialog since 10/24:** 12 shown / 11 users (1.2.0: 7, 1.1.7: 4),
+  0 accepted.
+- **Remaining decision:** Firestore re-enforcement. Needs ~90-95%+ of
+  weekly Android actives on 1.3.x (or a hard minimum-version gate), plus
+  reverting the concurrent token wait in `initializeUserSession()`. Re-check
+  adoption in ~3-4 weeks; whether to re-enforce at all (small app, rules are
+  the real boundary) is a separate judgment call.
+
 ## High-level architecture
 
 **Keep `ReCaptchaEnterpriseProvider` for everything else** (web browsers,
