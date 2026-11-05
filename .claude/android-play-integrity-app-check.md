@@ -414,6 +414,16 @@ event for the update dialog if tap-through matters.
   This takes effect on deploy, before enforcement: a slow token now delays the
   first load, up to the 10 s timeout. It does not help a throttled device, which
   is what actually lost the 8/19 registrations.
+- **Web reCAPTCHA failures: none found in production (GA, July to 11/05).** All
+  App Check error events on real traffic are Android (108 events / 64 users
+  "Proceeding without", 87 / 48 "Skipped"). The only web row is the 8/21
+  `appCheck/recaptcha-error`, and its hostName is `localhost`, so it was a dev
+  machine rather than the real user the follow-up doc assumed. The sample is
+  small: 10 sign-ups and 13 email verifications on pipsplit.com, and
+  `app_check_status` from 1 web user. Anonymous visitors' failures aren't logged.
+  That rules out an Android-sized failure rate, not a low one. Old Android users
+  taking the popup's web link are barely represented, so watch
+  `app_check_status` with platform `web` after deploy.
 - **Still to change when Firestore enforcement is turned on:** add
   `permission-denied` back to `APP_CHECK_LIKELY_CODES`
   (`src/app/utilities/app-check-error.util.ts`). Until then a device refused by
