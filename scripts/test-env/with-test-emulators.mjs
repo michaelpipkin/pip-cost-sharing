@@ -21,6 +21,12 @@ export const PORT_RELEASE_TIMEOUT_MS = 15_000;
 // shutting down) before refusing to run.
 export const PORT_BUSY_GRACE_MS = 10_000;
 export const PORT_POLL_INTERVAL_MS = 250;
+// Seconds the functions emulator gives a new worker process to start. Past
+// that it logs "Failed to load function." and drops the event without a retry.
+// Its default of 30 is too short for the e2e seed, whose 100+ simultaneous
+// sign-ups each start workers, so a lost createUserProfileOnSignUp fails the
+// whole run during global setup.
+export const FUNCTIONS_WORKER_START_TIMEOUT_S = 120;
 
 // Port keys (in TEST_PORTS) each emulator occupies.
 const EMULATOR_PORT_KEYS = {
@@ -272,7 +278,16 @@ export function parseListeningPids(netstatOutput, ports) {
 
 export function runStep({ cmd, commandLine, cwd }, spawnFn = spawn) {
   return new Promise((resolve) => {
-    const child = spawnFn(commandLine, { cwd, stdio: 'inherit', shell: true });
+    const child = spawnFn(commandLine, {
+      cwd,
+      stdio: 'inherit',
+      shell: true,
+      env: {
+        ...process.env,
+        // firebase-tools reads this name for the worker start limit too.
+        FUNCTIONS_DISCOVERY_TIMEOUT: String(FUNCTIONS_WORKER_START_TIMEOUT_S),
+      },
+    });
     child.once('error', (error) => {
       console.error(`Failed to run ${cmd}: ${error.message}`);
       resolve(1);
