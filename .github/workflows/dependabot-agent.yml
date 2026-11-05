@@ -11,18 +11,28 @@ on:
   schedule:
     - cron: "0 6 * * 1" # Mondays 06:00 UTC (no native "new alert" trigger exists)
 
-permissions:
-  contents: write
-  pull-requests: write
-# Note: the Dependabot alerts REST API is not accessible to the built-in GITHUB_TOKEN under any
-# `permissions:` grant — it requires a PAT with `security_events` scope (see DEPENDABOT_AGENT_TOKEN
-# secret, used below only for the agent invocation, not for checkout/PR creation).
+permissions: {}
+# Two jobs, each on its own machine, because a job's secrets are in its runner's memory and hosted
+# runners give steps sudo. `reconcile` runs the agent and installs freshly updated packages, so it
+# gets no write access. `publish` runs none of that code, checks the patch, then opens the PR.
+#
+# The Dependabot alerts REST API is not accessible to the built-in GITHUB_TOKEN under any
+# `permissions:` grant. DEPENDABOT_AGENT_TOKEN is a fine-grained PAT limited to this repository
+# with "Dependabot alerts: read", passed only to the steps that run the agent. `reconcile` has to
+# hold it because --alerts-file works only with the targeted strategy, which doesn't support pnpm.
 
 jobs:
   reconcile:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    outputs:
+      apply: ${{ steps.mode.outputs.apply }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -60,18 +70,139 @@ jobs:
           pnpm install --no-frozen-lockfile
           cd functions && pnpm install --no-frozen-lockfile
 
-      - name: Open pull request
+      # Taken before the checks below, and outside the checkout, so nothing they
+      # generate can reach the patch. Every tracked change goes in: `publish` decides
+      # whether it's allowed, so an unexpected change fails there instead of vanishing.
+      - name: Save the changes as a patch
         if: steps.mode.outputs.apply == 'true'
-        uses: peter-evans/create-pull-request@v8
+        run: |
+          git status --short
+          mkdir -p "$RUNNER_TEMP/agent-patch"
+          git diff --binary > "$RUNNER_TEMP/agent-patch/changes.patch"
+
+      # The agent doesn't build or test, and no workflow runs on PRs to dev, so this is
+      # the only automated check of the updated dependencies. A failure here means no PR.
+      #
+      # Placeholders rather than the blank .example files: the build prerenders, which
+      # initializes Firebase and fails on an empty API key. No secrets are needed here.
+      - name: Create stub config files for the checks
+        if: steps.mode.outputs.apply == 'true'
+        run: |
+          cat > src/app/firebase.config.ts << 'EOF'
+          export const firebaseConfig = {
+            apiKey: 'ci-placeholder',
+            authDomain: 'ci-placeholder.firebaseapp.com',
+            projectId: 'ci-placeholder',
+            storageBucket: 'ci-placeholder.appspot.com',
+            messagingSenderId: '0',
+            appId: '1:0:web:0',
+            measurementId: 'G-0',
+          };
+
+          export const appCheckConfig = {
+            recaptchaSiteKey: 'ci-placeholder',
+          };
+          EOF
+          cp src/app/github.config.example.ts src/app/github.config.ts
+
+      - name: Build the app
+        if: steps.mode.outputs.apply == 'true'
+        run: pnpm exec ng build
+
+      - name: Run the unit tests
+        if: steps.mode.outputs.apply == 'true'
+        run: pnpm test
+
+      - name: Build Cloud Functions
+        if: steps.mode.outputs.apply == 'true'
+        run: pnpm --dir functions run build
+
+      - name: Keep the patch for the next job
+        if: steps.mode.outputs.apply == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: dependabot-agent-patch
+          path: ${{ runner.temp }}/agent-patch/changes.patch
+          if-no-files-found: error
+          retention-days: 1
+          overwrite: true
+
+  publish:
+    needs: reconcile
+    if: needs.reconcile.outputs.apply == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # A schedule and a manual run would otherwise race on the one PR branch.
+    concurrency:
+      group: dependabot-agent-publish
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # create-pull-request pushes with its own token, so no credential needs to stay in .git.
+          persist-credentials: false
+
+      # Outside the checkout, so it can't end up in the commit.
+      - name: Fetch the patch
+        uses: actions/download-artifact@v8
+        with:
+          name: dependabot-agent-patch
+          path: ${{ runner.temp }}/agent-patch
+
+      # The patch came from the job that ran the agent, so it's checked before it's trusted.
+      - name: Check and apply the patch
+        run: |
+          fail() {
+            echo "::error title=dependabot-agent patch::$1"
+            exit 1
+          }
+          patch="$RUNNER_TEMP/agent-patch/changes.patch"
+          [ -f "$patch" ] || fail "The patch is missing."
+          if [ ! -s "$patch" ]; then
+            echo "The run changed nothing."
+            exit 0
+          fi
+          # Header lines only: everything inside a hunk starts with a space, + or -.
+          if grep -qE '^(rename |copy |similarity |dissimilarity |old mode |new mode |new file |deleted file |GIT binary patch)' "$patch"; then
+            fail "The patch does more than edit file contents."
+          fi
+          git apply "$patch" || fail "The patch doesn't apply."
+          # Judged by what it did, too: a patch can leave out the headers that describe it.
+          status=$(git status --porcelain --ignored)
+          [ -n "$status" ] || fail "The patch changed nothing."
+          if grep -qvE '^ M (package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|functions/package\.json|functions/pnpm-lock\.yaml|functions/pnpm-workspace\.yaml|scripts/db/package\.json)$' <<< "$status"; then
+            echo "$status"
+            fail "The patch changes a file outside the expected package files."
+          fi
+          if git diff --raw | grep -qvE '^:100644 100644 '; then
+            fail "The patch does more than edit file contents."
+          fi
+
+      # Runs on an empty patch too, as it always has: with no diff, the action opens
+      # nothing and closes a stale PR from an earlier run. Pinned to a commit because
+      # this third-party action is handed the write token.
+      - name: Open pull request
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           base: dev
           branch: dependabot-agent/reconcile-overrides
+          # Only the package files. These match the root's files too. A literal name that
+          # matched nothing would fail the whole git add, leaving a green run with no PR.
+          add-paths: |
+            :(glob)**/package.json
+            :(glob)**/pnpm-lock.yaml
+            :(glob)**/pnpm-workspace.yaml
           commit-message: "chore: reconcile dependency overrides with Dependabot alerts"
           title: "chore: reconcile dependency overrides"
           body: |
             Automated override reconciliation by `dependabot-agent` (pinned devDependency).
             Adds/updates overrides for still-open transitive alerts and removes stale ones,
             across the root workspace and the `functions/` sub-package.
-            **Merge only after review/CI** — the tool does not build or test.
+            The workflow built the app and Cloud Functions and passed the unit tests against
+            these changes on the commit it ran from. E2E tests did not run, and no CI runs on
+            this PR. **Review before merging.**
           labels: dependencies
