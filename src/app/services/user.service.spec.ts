@@ -1559,6 +1559,31 @@ describe('UserService', () => {
     });
 
     describe('App Check readiness at sign-in', () => {
+      it('waits for the token before the first Firestore read, after clearing the previous session', async () => {
+        initAppCheck({} as any);
+        let resolveToken!: (token: { token: string }) => void;
+        vi.spyOn(appCheckModule, 'getToken').mockReturnValue(
+          new Promise((resolve) => {
+            resolveToken = resolve;
+          }) as any
+        );
+        const callback = await getAuthStateCallback(service);
+        const getDocSpy = vi.spyOn(firestoreModule, 'getDoc');
+        getDocSpy.mockClear();
+
+        const done = callback(unverifiedUser() as any);
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        expect(getDocSpy).not.toHaveBeenCalled();
+        expect(mockGroupStore.clearAllUserGroups).toHaveBeenCalled();
+
+        resolveToken({ token: 'abc' });
+        await done;
+
+        expect(getDocSpy).toHaveBeenCalled();
+        expect(mockGroupService.getUserGroups).toHaveBeenCalled();
+      });
+
       it('keeps loading the account and logs the rejection reason when no App Check token is confirmed', async () => {
         initAppCheck({} as any);
         vi.spyOn(appCheckModule, 'getToken').mockRejectedValue(
