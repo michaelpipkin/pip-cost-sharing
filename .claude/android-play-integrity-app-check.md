@@ -401,9 +401,13 @@ event for the update dialog if tap-through matters.
   to the web version for phones that can't update. It opens at startup, so only
   people who reach web code see it: 13 of 54 old-build users in the last 7 days.
   It fails open when the version can't be read (no App plugin, failed lookup).
-  New event: `update_prompt_web_chosen`. Needs a device check on an old build:
-  back button, Update reaching the Store, and the web link staying in a browser
-  (the app has an App Link intent filter for `pipsplit.com`).
+  New event: `update_prompt_web_chosen`. Checked 2026-11-05 on the Android
+  emulator with the popup forced on, a debug build and `pipsplit.com` marked
+  verified (a plain link to the site opened the app): the web link stayed in a
+  Custom Tab, including on a tap right after a cold start; Update reached the
+  Play Store listing; back and tapping outside didn't dismiss it; it was still
+  there on return. Not covered until deploy: the version check on a real old
+  build, and the popup alongside the signed-in loading overlay.
 - **Sign-in now waits for the App Check token (written 2026-11-05, not yet
   deployed):** `initializeUserSession` awaits `tokenCheck` before its first
   Firestore read, so the cold-boot race can't recur when enforcement returns.
