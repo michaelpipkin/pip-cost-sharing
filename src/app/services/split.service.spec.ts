@@ -32,6 +32,7 @@ describe('SplitService', () => {
     logEvent: vi.fn().mockResolvedValue(undefined),
     logError: vi.fn(),
     logSnapshotError: vi.fn(),
+    cancelSnapshotError: vi.fn(),
   };
 
   function makeMockBatch() {
@@ -67,6 +68,15 @@ describe('SplitService', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it('should cancel its pending snapshot error when it stops listening', () => {
+    service.stopListening();
+
+    expect(mockAnalytics.cancelSnapshotError).toHaveBeenCalledWith(
+      'Split Service',
+      'getUnpaidSplitsForGroup'
+    );
   });
 
   describe('updateSplit - expense paid status determination', () => {

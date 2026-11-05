@@ -89,6 +89,10 @@ export class MemorizedService implements IMemorizedService {
   }
 
   stopListening(): void {
+    this.analytics.cancelSnapshotError(
+      'Memorized Service',
+      'getMemorizedExpensesForGroup'
+    );
     this.#unsubscribe?.();
     this.#unsubscribe = undefined;
   }

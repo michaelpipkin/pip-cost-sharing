@@ -236,6 +236,10 @@ export class MemberService implements IMemberService {
   }
 
   stopListening(): void {
+    this.analytics.cancelSnapshotError(
+      'Member Service',
+      'getGroupMembers'
+    );
     this.#unsubscribe?.();
     this.#unsubscribe = undefined;
     this.#currentMemberGroupId = null;

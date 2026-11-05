@@ -32,6 +32,8 @@ import type { SeedDataset, SeedGroup, SeedUser } from '../types';
  *   app's batch cleared their default (a cross-user write the users rule
  *   allows only to the group's admins). One-shot per seeding.
  * - groups-autoadder: "Groups – AutoAdd" (default), auto-add turned on.
+ * - groups-deleter: "Groups – Delete" (default), deleted by its test, and
+ *   "Groups – Delete Home", which must survive. One-shot per seeding.
  */
 
 const SPEC = 'spec:e2e/groups/groups-admin.spec.ts' as const;
@@ -93,6 +95,7 @@ const renamer = seedUser('groups-renamer', 'g-groups-rename');
 const activator = seedUser('groups-activator', 'g-groups-active-home');
 const activeBystander = seedUser('groups-active-bystander', 'g-groups-active');
 const autoAdder = seedUser('groups-autoadder', 'g-groups-autoadd');
+const deleter = seedUser('groups-deleter', 'g-groups-delete');
 
 const autoAddCreatorHome = soloGroup(
   'g-groups-autoadd-creator-home',
@@ -118,6 +121,13 @@ const switchA = soloGroup('g-groups-switch-a', 'Groups – Switch A', switcher);
 const switchB = soloGroup('g-groups-switch-b', 'Groups – Switch B', switcher);
 /** Renamed by "should edit group name". */
 const rename = soloGroup('g-groups-rename', 'Groups – Rename', renamer);
+/** Deleted by "should delete the selected group". */
+const deleteTarget = soloGroup('g-groups-delete', 'Groups – Delete', deleter);
+const deleteHome = soloGroup(
+  'g-groups-delete-home',
+  'Groups – Delete Home',
+  deleter
+);
 const activeHome = soloGroup(
   'g-groups-active-home',
   'Groups – Active Home',
@@ -158,6 +168,7 @@ export const GROUPS = {
     activator,
     activeBystander,
     autoAdder,
+    deleter,
   },
   groups: {
     autoAddCreatorHome,
@@ -171,6 +182,8 @@ export const GROUPS = {
     activeHome,
     active,
     autoAdd,
+    deleteTarget,
+    deleteHome,
   },
 } as const;
 

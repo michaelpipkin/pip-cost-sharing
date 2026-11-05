@@ -71,6 +71,10 @@ export class SplitService implements ISplitService {
   }
 
   stopListening(): void {
+    this.analytics.cancelSnapshotError(
+      'Split Service',
+      'getUnpaidSplitsForGroup'
+    );
     this.#unsubscribe?.();
     this.#unsubscribe = undefined;
   }

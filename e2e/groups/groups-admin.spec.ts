@@ -25,9 +25,19 @@ const {
   activator,
   activeBystander,
   autoAdder,
+  deleter,
 } = GROUPS.users;
-const { viewA, viewB, switchA, switchB, rename, active, autoAdd } =
-  GROUPS.groups;
+const {
+  viewA,
+  viewB,
+  switchA,
+  switchB,
+  rename,
+  active,
+  autoAdd,
+  deleteTarget,
+  deleteHome,
+} = GROUPS.groups;
 
 function uniqueGroupName(label: string): string {
   const suffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -354,6 +364,28 @@ test.describe('Groups - managing groups', { tag: '@groups' }, () => {
         return snap.get('defaultGroupRef');
       })
       .toBeNull();
+  });
+
+  test('should delete the selected group', async ({ page }) => {
+    const groupsPage = await openGroupsAs(page, deleter);
+    await expect(groupsPage.groupSelect).toContainText(deleteTarget.name);
+
+    await groupsPage.openManageGroupsFor(deleteTarget.name);
+    await groupsPage.deleteManagedGroup();
+
+    await expect(groupsPage.snackbarWith('Group deleted')).toBeVisible();
+    await groupsPage.verifyGroupNotInList(deleteTarget.name);
+    await groupsPage.verifyGroupInList(deleteHome.name);
+    // Really gone on the server (read through the Admin SDK on the test
+    // emulator), not just removed from this page's list.
+    await expect
+      .poll(async () => {
+        const snap = await getSeedAdmin()
+          .db.doc(`groups/${deleteTarget.key}`)
+          .get();
+        return snap.exists;
+      })
+      .toBe(false);
   });
 
   test('should toggle auto-add members setting', async ({ page }) => {

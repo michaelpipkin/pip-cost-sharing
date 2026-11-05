@@ -25,6 +25,7 @@ describe('HistoryService', () => {
     logEvent: vi.fn().mockResolvedValue(undefined),
     logError: vi.fn(),
     logSnapshotError: vi.fn(),
+    cancelSnapshotError: vi.fn(),
   };
 
   function makeMockBatch() {
@@ -65,6 +66,15 @@ describe('HistoryService', () => {
   afterEach(() => {
     mockMemberStore.loaded.set(true);
     vi.restoreAllMocks();
+  });
+
+  it('should cancel its pending snapshot error when it stops listening', () => {
+    service.stopListening();
+
+    expect(mockAnalytics.cancelSnapshotError).toHaveBeenCalledWith(
+      'History Service',
+      'getHistoryForGroup'
+    );
   });
 
   describe('getHistoryForGroup', () => {

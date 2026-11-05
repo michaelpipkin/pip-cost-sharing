@@ -453,13 +453,30 @@ export class GroupService implements IGroupService {
     this.#pendingGroupId = null;
   }
 
-  private clearCurrentGroupData(): void {
-    this.#loadedGroupId = null;
+  #startGroupListeners(
+    groupId: string,
+    userRef: DocumentReference<User>
+  ): void {
+    this.categoryService.getGroupCategories(groupId);
+    this.memberService.getGroupMembers(groupId);
+    this.memberService.getMemberByUserRef(groupId, userRef);
+    this.expenseService.doesGroupHaveExpenses(groupId);
+    this.memorizedService.getMemorizedExpensesForGroup(groupId);
+    this.splitsService.getUnpaidSplitsForGroup(groupId);
+    this.historyService.getHistoryForGroup(groupId);
+  }
+
+  #stopGroupListeners(): void {
     this.memberService.stopListening();
     this.categoryService.stopListening();
     this.memorizedService.stopListening();
     this.splitsService.stopListening();
     this.historyService.stopListening();
+  }
+
+  private clearCurrentGroupData(): void {
+    this.#loadedGroupId = null;
+    this.#stopGroupListeners();
     this.categoryStore.clearGroupCategories();
     this.memberStore.clearGroupMembers();
     this.expenseStore.clearGroupExpenses();
@@ -516,13 +533,7 @@ export class GroupService implements IGroupService {
       // Initialize group-related data
       this.#loadedGroupId = group.id;
       this.#pendingGroupId = null;
-      this.categoryService.getGroupCategories(groupRef.id);
-      this.memberService.getGroupMembers(groupRef.id);
-      this.memberService.getMemberByUserRef(groupRef.id, userRef);
-      this.expenseService.doesGroupHaveExpenses(groupRef.id);
-      this.memorizedService.getMemorizedExpensesForGroup(groupRef.id);
-      this.splitsService.getUnpaidSplitsForGroup(groupRef.id);
-      this.historyService.getHistoryForGroup(groupRef.id);
+      this.#startGroupListeners(groupRef.id, userRef);
 
       // Remember the selection for the next visit - only when it changed.
       // Each write also fires the syncUserEmailLower trigger.
@@ -637,10 +648,33 @@ export class GroupService implements IGroupService {
       { success: boolean; message: string }
     >(this.functions, 'deleteGroup');
 
-    const result = await deleteGroupFn({ groupId });
+    // The function removes the group doc before this call returns, and the
+    // rules for its subcollections read that doc, so a listener still attached
+    // at that point can get permission-denied, which looks like a real access
+    // error in the log.
+    const deletingCurrentGroup = this.groupStore.currentGroup()?.id === groupId;
+    if (deletingCurrentGroup) {
+      this.#stopGroupListeners();
+    }
 
-    if (!result.data.success) {
-      throw new Error(result.data.message || 'Failed to delete group');
+    try {
+      const result = await deleteGroupFn({ groupId });
+
+      if (!result.data.success) {
+        throw new Error(result.data.message || 'Failed to delete group');
+      }
+    } catch (error) {
+      // Still selected (a groups snapshot can move the selection during the
+      // call), so it needs its live data back.
+      const userRef = this.userStore.user()?.ref;
+      if (
+        deletingCurrentGroup &&
+        userRef &&
+        this.groupStore.currentGroup()?.id === groupId
+      ) {
+        this.#startGroupListeners(groupId, userRef);
+      }
+      throw error;
     }
 
     // Clear current group if it was the deleted one

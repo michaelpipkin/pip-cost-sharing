@@ -48,6 +48,7 @@ describe('MemberService', () => {
     logEvent: vi.fn().mockResolvedValue(undefined),
     logError: vi.fn(),
     logSnapshotError: vi.fn(),
+    cancelSnapshotError: vi.fn(),
   };
 
   beforeEach(() => {
@@ -97,6 +98,15 @@ describe('MemberService', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it('should cancel its pending snapshot error when it stops listening', () => {
+    service.stopListening();
+
+    expect(mockAnalytics.cancelSnapshotError).toHaveBeenCalledWith(
+      'Member Service',
+      'getGroupMembers'
+    );
   });
 
   describe('getGroupMembers', () => {

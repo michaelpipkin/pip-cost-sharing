@@ -32,6 +32,7 @@ describe('CategoryService', () => {
     logEvent: vi.fn().mockResolvedValue(undefined),
     logError: vi.fn(),
     logSnapshotError: vi.fn(),
+    cancelSnapshotError: vi.fn(),
   };
 
   beforeEach(() => {
@@ -65,6 +66,15 @@ describe('CategoryService', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it('should cancel its pending snapshot error when it stops listening', () => {
+    service.stopListening();
+
+    expect(mockAnalytics.cancelSnapshotError).toHaveBeenCalledWith(
+      'Category Service',
+      'getGroupCategories'
+    );
   });
 
   describe('addCategory', () => {
