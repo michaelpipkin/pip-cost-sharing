@@ -365,6 +365,71 @@ event for the update dialog if tap-through matters.
   adoption in ~3-4 weeks; whether to re-enforce at all (small app, rules are
   the real boundary) is a separate judgment call.
 
+## SNAPSHOT 2026-11-05
+
+- **App Check failures:** one throttle since 10/19 (11/01 18:50 UTC, reCAPTCHA
+  on 1.2.0 (23), Android 16 CPH2727). None from Play Integrity:
+  `app_check_status` 10/30-11/05 = 27 ready / 20 users, 0 failed. 19 signups
+  since 10/30, 0 orphaned.
+- **Android distinct users 10/30-11/05:** 1.3.1 = 124, 1.2.0 = 34, 1.1.7 = 8
+  (~75% on 1.3.1), but 96 of the 124 are new installs. Excluding new users:
+  1.3.1 = 28, 1.2.0 = 32, 1.1.7 = 8 (~41%), so existing users are upgrading
+  slowly and the headline share is driven by new installs.
+- **Update dialog 10/30-11/05:** 16 shown / 13 users, 1 accepted (on 1.1.7).
+- **New Android users:** 98, of which 86 came from the "App promotion-Perf
+  Max" ad campaign. 19 signups across all platforms in the same window.
+- **Listener bursts explained (10/15 and 11/01):** five group listeners
+  failing together with "Missing or insufficient permissions" follows
+  `deleteGroup` both times (10/15: function 06:06:17, errors logged 06:06:34;
+  11/01: 15:01:22 and 15:01:54). Likely mechanism, not reproduced: the
+  client's listeners stay attached until the callable returns
+  (`GroupService.deleteGroup` only clears them afterwards), so the server's
+  delete makes `group(gid)` fail in the rules; `logSnapshotError`'s 10 s timer
+  then logs anyway because it isn't cancelled when the listener stops. Log
+  noise only. Log entries don't carry a uid, so the match is by timing.
+  Fix written 2026-11-05: `deleteGroup` stops the listeners before the call
+  (restarts them if it fails), and each listener's `stopListening` calls
+  `AnalyticsService.cancelSnapshotError`. If bursts still follow deletes after
+  deploy, the mechanism above was wrong. A probe on the test emulators did not
+  reproduce it: deleting the selected group logged 0 `logAppError` calls both
+  with and without the fix. The cause stays a hypothesis until production shows
+  otherwise. `deleteGroupInternal` deletes the group doc last, so any denial
+  window is at the end of the call, not partway through.
+- `localhost` traffic in GA: none since 10/30.
+- **Update prompt now required (written 2026-11-05, not yet deployed):**
+  `MIN_NATIVE_BUILD` = 26 (1.3.1), the dialog can't be dismissed, and it links
+  to the web version for phones that can't update. It opens at startup, so only
+  people who reach web code see it: 13 of 54 old-build users in the last 7 days.
+  It fails open when the version can't be read (no App plugin, failed lookup).
+  New event: `update_prompt_web_chosen`. Checked 2026-11-05 on the Android
+  emulator with the popup forced on, a debug build and `pipsplit.com` marked
+  verified (a plain link to the site opened the app): the web link stayed in a
+  Custom Tab, including on a tap right after a cold start; Update reached the
+  Play Store listing; back and tapping outside didn't dismiss it; it was still
+  there on return. Not covered until deploy: the version check on a real old
+  build, and the popup alongside the signed-in loading overlay.
+- **Sign-in now waits for the App Check token (written 2026-11-05, not yet
+  deployed):** `initializeUserSession` awaits `tokenCheck` before its first
+  Firestore read, so the cold-boot race can't recur when enforcement returns.
+  This takes effect on deploy, before enforcement: a slow token now delays the
+  first load, up to the 10 s timeout. It does not help a throttled device, which
+  is what actually lost the 8/19 registrations.
+- **Web reCAPTCHA failures: none found in production (GA, July to 11/05).** All
+  App Check error events on real traffic are Android (108 events / 64 users
+  "Proceeding without", 87 / 48 "Skipped"). The only web row is the 8/21
+  `appCheck/recaptcha-error`, and its hostName is `localhost`, so it was a dev
+  machine rather than the real user the follow-up doc assumed. The sample is
+  small: 10 sign-ups and 13 email verifications on pipsplit.com, and
+  `app_check_status` from 1 web user. Anonymous visitors' failures aren't logged.
+  That rules out an Android-sized failure rate, not a low one. Old Android users
+  taking the popup's web link are barely represented, so watch
+  `app_check_status` with platform `web` after deploy.
+- **Still to change when Firestore enforcement is turned on:** add
+  `permission-denied` back to `APP_CHECK_LIKELY_CODES`
+  (`src/app/utilities/app-check-error.util.ts`). Until then a device refused by
+  App Check gets "Something went wrong" instead of the App Check help dialog.
+  Not added now because Firestore denials are rules denials while it's off.
+
 ## High-level architecture
 
 **Keep `ReCaptchaEnterpriseProvider` for everything else** (web browsers,

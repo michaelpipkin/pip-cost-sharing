@@ -114,6 +114,7 @@ describe('GroupService', () => {
     logEvent: vi.fn().mockResolvedValue(undefined),
     logError: vi.fn(),
     logSnapshotError: vi.fn(),
+    cancelSnapshotError: vi.fn(),
   };
   const mockExpenseService = { doesGroupHaveExpenses: vi.fn().mockResolvedValue(false) };
 
@@ -1364,6 +1365,103 @@ describe('GroupService', () => {
       await service.deleteGroup('group-1');
 
       expect(mockGroupStore.removeGroup).toHaveBeenCalledWith('group-1');
+    });
+
+    describe('group data listeners', () => {
+      const allListeners = () => [
+        mockCategoryService.stopListening,
+        mockMemberService.stopListening,
+        mockMemorizedService.stopListening,
+        mockSplitService.stopListening,
+        mockHistoryService.stopListening,
+      ];
+
+      function mockCallable(impl: () => unknown) {
+        vi.spyOn(functionsModule, 'httpsCallable').mockReturnValue(
+          vi.fn(impl as any) as any
+        );
+      }
+
+      beforeEach(() => {
+        allListeners().forEach((stop) => stop.mockClear());
+        mockCategoryService.getGroupCategories.mockClear();
+        mockHistoryService.getHistoryForGroup.mockClear();
+        userSignal.set({ ref: { id: 'user-1' }, defaultGroupRef: null });
+      });
+
+      it('stops the current group\'s listeners before the function runs', async () => {
+        currentGroupSignal.set({ id: 'group-1' });
+        let stoppedBeforeCall: boolean[] = [];
+        mockCallable(() => {
+          stoppedBeforeCall = allListeners().map(
+            (stop) => stop.mock.calls.length > 0
+          );
+          return Promise.resolve({ data: { success: true } });
+        });
+
+        await service.deleteGroup('group-1');
+
+        expect(stoppedBeforeCall).toEqual([true, true, true, true, true]);
+      });
+
+      it('leaves the listeners alone when deleting a different group', async () => {
+        currentGroupSignal.set({ id: 'group-2' });
+        mockCallable(() => Promise.resolve({ data: { success: true } }));
+
+        await service.deleteGroup('group-1');
+
+        allListeners().forEach((stop) => expect(stop).not.toHaveBeenCalled());
+      });
+
+      it('restarts the listeners and rethrows when the function rejects', async () => {
+        currentGroupSignal.set({ id: 'group-1' });
+        mockCallable(() => Promise.reject(new Error('Permission denied')));
+
+        await expect(service.deleteGroup('group-1')).rejects.toThrow(
+          'Permission denied'
+        );
+
+        expect(mockCategoryService.getGroupCategories).toHaveBeenCalledWith(
+          'group-1'
+        );
+        expect(mockHistoryService.getHistoryForGroup).toHaveBeenCalledWith(
+          'group-1'
+        );
+      });
+
+      it('restarts the listeners when the function reports success: false', async () => {
+        currentGroupSignal.set({ id: 'group-1' });
+        mockCallable(() =>
+          Promise.resolve({ data: { success: false, message: 'Nope' } })
+        );
+
+        await expect(service.deleteGroup('group-1')).rejects.toThrow('Nope');
+
+        expect(mockCategoryService.getGroupCategories).toHaveBeenCalledWith(
+          'group-1'
+        );
+      });
+
+      it('does not restart them if the selection moved on during the call', async () => {
+        currentGroupSignal.set({ id: 'group-1' });
+        mockCallable(() => {
+          currentGroupSignal.set({ id: 'group-2' });
+          return Promise.reject(new Error('Failed'));
+        });
+
+        await expect(service.deleteGroup('group-1')).rejects.toThrow('Failed');
+
+        expect(mockCategoryService.getGroupCategories).not.toHaveBeenCalled();
+      });
+
+      it('does not restart them after a successful delete', async () => {
+        currentGroupSignal.set({ id: 'group-1' });
+        mockCallable(() => Promise.resolve({ data: { success: true } }));
+
+        await service.deleteGroup('group-1');
+
+        expect(mockCategoryService.getGroupCategories).not.toHaveBeenCalled();
+      });
     });
   });
 

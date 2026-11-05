@@ -69,6 +69,10 @@ export class CategoryService implements ICategoryService {
   }
 
   stopListening(): void {
+    this.analytics.cancelSnapshotError(
+      'Category Service',
+      'getGroupCategories'
+    );
     this.#unsubscribe?.();
     this.#unsubscribe = undefined;
   }

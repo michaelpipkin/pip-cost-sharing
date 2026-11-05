@@ -875,6 +875,10 @@ committed or deployed yet.
 
 ## New tracked category: `appCheck/recaptcha-error` on desktop web, 2026-08-21
 
+**Correction, 2026-11-05:** GA shows these 6 events with hostName `localhost`,
+so this was a dev machine, not a real user behind an ad-blocker as read below.
+No App Check failure from production web traffic has been found.
+
 Distinct from everything else in this doc - **not** the Android WebView
 mechanism, **not** `appCheck/throttled`, **not** a Firestore-side error
 at all. `platform: web, native: false` (Windows/Chrome desktop), error

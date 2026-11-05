@@ -112,6 +112,10 @@ export class HistoryService implements IHistoryService {
   }
 
   stopListening(): void {
+    this.analytics.cancelSnapshotError(
+      'History Service',
+      'getHistoryForGroup'
+    );
     this.#unsubscribe?.();
     this.#unsubscribe = undefined;
     this.#pendingSnap.set(null);
