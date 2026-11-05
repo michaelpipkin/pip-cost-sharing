@@ -38,6 +38,8 @@ export class GroupsPage extends BasePage {
   readonly groupNameError: Locator;
   readonly displayNameError: Locator;
   readonly manageGroupNameError: Locator;
+  readonly deleteGroupButton: Locator;
+  readonly confirmDialogButton: Locator;
   readonly tourTitle: Locator;
   readonly tourCloseButton: Locator;
 
@@ -79,6 +81,8 @@ export class GroupsPage extends BasePage {
     this.groupNameError = page.getByTestId('group-name-error-0');
     this.displayNameError = page.getByTestId('display-name-error-0');
     this.manageGroupNameError = page.getByTestId('manage-group-name-error-0');
+    this.deleteGroupButton = page.getByTestId('delete-group-button');
+    this.confirmDialogButton = page.getByTestId('confirm-button');
     this.tourTitle = page.getByTestId('guided-tour-title');
     this.tourCloseButton = page.getByTestId('guided-tour-close-button');
   }
@@ -136,6 +140,16 @@ export class GroupsPage extends BasePage {
     await this.openGroupSelect();
     await expect(this.option(groupName)).toBeVisible();
     await this.closeSelectPanel();
+  }
+
+  /**
+   * With Manage Groups open on a group: deletes it and waits for the dialogs
+   * to close. The delete runs in a Cloud Function, which can be cold (20+ s).
+   */
+  async deleteManagedGroup(): Promise<void> {
+    await this.deleteGroupButton.click();
+    await this.confirmDialogButton.click();
+    await expect(this.manageGroupsDialog).toHaveCount(0, { timeout: 60_000 });
   }
 
   /** Asserts the group is not listed (e.g. it was deactivated). */

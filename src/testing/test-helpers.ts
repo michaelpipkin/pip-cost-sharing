@@ -308,6 +308,7 @@ export function createMockAnalyticsService() {
     logError: vi.fn(),
     logScreenView: vi.fn(),
     logSnapshotError: vi.fn(),
+    cancelSnapshotError: vi.fn(),
   };
 }
 

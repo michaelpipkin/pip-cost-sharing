@@ -235,10 +235,9 @@ export class UserService implements IUserService {
   private async initializeUserSession(
     firebaseUser: FirebaseUser
   ): Promise<void> {
-    // Checked once per session rather than once per retry below: the
-    // result only feeds diagnostics, and a per-attempt check would
-    // double-count the app_check_status event and repeat the
-    // "proceeding without" log on every transient-error retry.
+    // Checked once per session rather than once per retry below: a
+    // per-attempt check would double-count the app_check_status event and
+    // repeat the "proceeding without" log on every transient-error retry.
     const tokenCheck = appCheckTokenReady().then((tokenResult) => {
       void this.analytics.logAppCheckStatus(tokenResult);
       if (!tokenResult.ready) {
@@ -251,7 +250,6 @@ export class UserService implements IUserService {
             : tokenResult.reason
         );
       }
-      return tokenResult;
     });
 
     for (let attempt = 1; attempt <= LOGIN_SEQUENCE_MAX_ATTEMPTS; attempt++) {
@@ -265,21 +263,15 @@ export class UserService implements IUserService {
         this.historyStore.clearHistory();
         this.splitStore.clearSplits();
 
-        // Run the App Check readiness check and the initial user-doc
-        // read concurrently instead of gating the latter on the former.
-        // Firestore App Check enforcement is currently OFF (see
-        // .claude/app-check-enforcement-followup.md), so waiting up to
-        // appCheckTokenReady()'s 10s timeout before this Firestore read
-        // buys nothing today. The check (tokenCheck, above) is still
-        // awaited here so its diagnostics finish within the session.
-        // WARNING: if Firestore App Check enforcement is ever re-enabled,
-        // this must go back to sequential (await tokenCheck before any
-        // Firestore call below) or the cold-boot race that broke new
-        // registrations on 2026-08-19 will return.
-        const [, existingUser] = await Promise.all([
-          tokenCheck,
-          this.getUserDetails(firebaseUser.uid),
-        ]);
+        // No Firestore call before this: once Firestore enforces App Check, a
+        // request sent before the first token exists is rejected (the
+        // cold-boot race in .claude/app-check-enforcement-followup.md). It
+        // comes after the store clearing above so the wait, up to
+        // appCheckTokenReady()'s 10s timeout, never shows the last session's
+        // data. A session without a token still tries: the read is what
+        // reports the failure to the user.
+        await tokenCheck;
+        const existingUser = await this.getUserDetails(firebaseUser.uid);
 
         // Brand-new account: createUserProfileOnSignUp (Cloud Function, see
         // functions/src/user-onboarding.ts) creates the doc server-side as

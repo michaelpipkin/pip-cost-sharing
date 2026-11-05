@@ -86,6 +86,72 @@ describe('AnalyticsService', () => {
     await expect(service.logEvent('fail_event')).resolves.toBeUndefined();
   });
 
+  describe('logSnapshotError', () => {
+    const DENIED = 'Missing or insufficient permissions.';
+    let logErrorSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      logErrorSpy = vi
+        .spyOn(service, 'logError')
+        .mockResolvedValue(undefined) as any;
+      (service as any).auth = { currentUser: { uid: 'user-1' } };
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('logs other errors immediately', () => {
+      service.logSnapshotError('Comp', 'act', 'Failed', 'boom');
+
+      expect(logErrorSpy).toHaveBeenCalledWith('Comp', 'act', 'Failed', 'boom');
+    });
+
+    it('logs a permission denial only after the delay', () => {
+      service.logSnapshotError('Comp', 'act', 'Failed', DENIED);
+      expect(logErrorSpy).not.toHaveBeenCalled();
+
+      vi.advanceTimersByTime(10000);
+
+      expect(logErrorSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('never logs a denial cancelled during the delay', () => {
+      service.logSnapshotError('Comp', 'act', 'Failed', DENIED);
+
+      service.cancelSnapshotError('Comp', 'act');
+      vi.advanceTimersByTime(10000);
+
+      expect(logErrorSpy).not.toHaveBeenCalled();
+    });
+
+    it('cancels only the named listener', () => {
+      service.logSnapshotError('Comp', 'one', 'Failed', DENIED);
+      service.logSnapshotError('Comp', 'two', 'Failed', DENIED);
+
+      service.cancelSnapshotError('Comp', 'one');
+      vi.advanceTimersByTime(10000);
+
+      expect(logErrorSpy).toHaveBeenCalledTimes(1);
+      expect(logErrorSpy).toHaveBeenCalledWith('Comp', 'two', 'Failed', DENIED);
+    });
+
+    it('lets the same listener report again after a cancel', () => {
+      service.logSnapshotError('Comp', 'act', 'Failed', DENIED);
+      service.cancelSnapshotError('Comp', 'act');
+
+      service.logSnapshotError('Comp', 'act', 'Failed', DENIED);
+      vi.advanceTimersByTime(10000);
+
+      expect(logErrorSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('ignores a cancel with nothing pending', () => {
+      expect(() => service.cancelSnapshotError('Comp', 'act')).not.toThrow();
+    });
+  });
+
   describe('logAppCheckStatus', () => {
     beforeEach(() => {
       vi.spyOn(Capacitor, 'getPlatform').mockReturnValue('web');

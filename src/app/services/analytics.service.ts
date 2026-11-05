@@ -84,6 +84,17 @@ export class AnalyticsService {
     this.pendingSnapshotErrors.set(key, timer);
   }
 
+  // For a listener being stopped on purpose (e.g. its group is being deleted
+  // or was left): a permission denial still waiting out the delay in
+  // logSnapshotError came from access the app already knows is going away.
+  cancelSnapshotError(component: string, action: string): void {
+    const key = `${component}|${action}`;
+    const timer = this.pendingSnapshotErrors.get(key);
+    if (timer === undefined) return;
+    clearTimeout(timer);
+    this.pendingSnapshotErrors.delete(key);
+  }
+
   // The installed native app's version, e.g. "1.2.3 (45)" - null on web or
   // if the lookup fails. The Android shell loads the live web bundle, so
   // this is the only way to tell which native build a user is on (it

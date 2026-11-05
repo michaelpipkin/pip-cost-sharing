@@ -473,6 +473,21 @@ test('runStep spawns one command string with shell: true and no args array', asy
   assert.equal(calls[0].length, 2);
 });
 
+test('runStep extends the functions worker start limit and keeps the environment', async () => {
+  let options;
+  await runStep(
+    { cmd: 'echo', commandLine: 'echo', cwd: '/tmp' },
+    (_commandLine, spawnOptions) => {
+      options = spawnOptions;
+      const child = new EventEmitter();
+      queueMicrotask(() => child.emit('exit', 0));
+      return child;
+    }
+  );
+  assert.equal(options.env.FUNCTIONS_DISCOVERY_TIMEOUT, '120');
+  assert.equal(options.env.PATH, process.env.PATH);
+});
+
 const stepFixture = { cmd: 'echo', commandLine: 'echo', cwd: '/tmp' };
 
 test('runStep resolves 1 and logs "Failed to run" when the spawn errors', async () => {
