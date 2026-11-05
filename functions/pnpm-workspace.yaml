@@ -6,6 +6,7 @@ overrides:
   brace-expansion: '>=5.0.8 <6'
   browserslist: '>=4.28.7 <5'
   fast-uri: '>=3.1.9 <4'
+  glob: '>=14.0.2 <15'
   js-yaml: '>=3.15.1 <4'
   nodemailer: '>=10.1.4 <11'
   uuid: '>=11.1.1 <12'
