@@ -6,11 +6,17 @@ updateConfig:
     - typescript
 overrides:
   '@babel/core': '>=7.29.6 <8'
+  '@grpc/grpc-js': '>=1.13.6 <2'
   '@hono/node-server': '>=2.0.5 <3'
   brace-expansion: '>=2.1.4 <6'
   esbuild: '>=0.28.1 <0.29'
+  fast-uri: '>=3.1.9 <4'
   fast-xml-parser: '>=5.10.1 <6'
+  follow-redirects: '>=1.16.2 <2'
+  glob: '>=14.0.2 <15'
   hono: '>=4.12.34 <5'
+  minimatch: '>=11.0.1 <12'
+  re2js: '>=2.8.7 <3'
   tar: '>=7.5.16 <8'
   uuid: '>=11.1.1 <12'
 allowBuilds:
