@@ -52,17 +52,27 @@ jobs:
         id: mode
         run: echo "apply=${{ (github.event_name != 'workflow_dispatch') || (!inputs.dry_run) }}" >> "$GITHUB_OUTPUT"
 
+      # The planned changes also go on the run page, so a dry run can be read without the log.
       - name: Preview override changes (dry run)
         if: steps.mode.outputs.apply != 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.DEPENDABOT_AGENT_TOKEN }}
-        run: pnpm deps:dry-run
+        run: |
+          pnpm deps:dry-run --report "$RUNNER_TEMP/agent-report"
+          report="$RUNNER_TEMP/agent-report/report.md"
+          if [ -s "$report" ]; then
+            cat "$report" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning title=dependabot-agent report::The dry run wrote no report."
+          fi
 
+      # The report goes outside the checkout so it can't end up in the patch. Its
+      # report.md becomes the pull request description in `publish`.
       - name: Apply override changes
         if: steps.mode.outputs.apply == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.DEPENDABOT_AGENT_TOKEN }}
-        run: pnpm deps:fix
+        run: pnpm deps:fix --report "$RUNNER_TEMP/agent-report"
 
       - name: Sync lockfiles to new overrides
         if: steps.mode.outputs.apply == 'true'
@@ -117,12 +127,16 @@ jobs:
         if: steps.mode.outputs.apply == 'true'
         run: pnpm --dir functions run build
 
-      - name: Keep the patch for the next job
+      # Both paths sit under runner.temp, so the artifact keeps the agent-patch/ and
+      # agent-report/ folders and `publish` finds them at the same paths.
+      - name: Keep the patch and report for the next job
         if: steps.mode.outputs.apply == 'true'
         uses: actions/upload-artifact@v7
         with:
-          name: dependabot-agent-patch
-          path: ${{ runner.temp }}/agent-patch/changes.patch
+          name: dependabot-agent-output
+          path: |
+            ${{ runner.temp }}/agent-patch/changes.patch
+            ${{ runner.temp }}/agent-report/report.md
           if-no-files-found: error
           retention-days: 1
           overwrite: true
@@ -146,11 +160,11 @@ jobs:
           persist-credentials: false
 
       # Outside the checkout, so it can't end up in the commit.
-      - name: Fetch the patch
+      - name: Fetch the patch and report
         uses: actions/download-artifact@v8
         with:
-          name: dependabot-agent-patch
-          path: ${{ runner.temp }}/agent-patch
+          name: dependabot-agent-output
+          path: ${{ runner.temp }}
 
       # The patch came from the job that ran the agent, so it's checked before it's trusted.
       - name: Check and apply the patch
@@ -181,6 +195,25 @@ jobs:
             fail "The patch does more than edit file contents."
           fi
 
+      # The agent's report can't know what this workflow checked afterwards, so that
+      # note is added here. Written outside the checkout, and add-paths takes only
+      # package files anyway. The body is text for a reviewer; the patch check above
+      # is what guards the change itself.
+      - name: Build the pull request description
+        run: |
+          report="$RUNNER_TEMP/agent-report/report.md"
+          if [ ! -s "$report" ]; then
+            echo "::error title=dependabot-agent report::The report is missing or empty."
+            exit 1
+          fi
+          {
+            cat "$report"
+            printf '\n---\n\n'
+            echo "The workflow built the app and Cloud Functions and passed the unit tests against"
+            echo "these changes on the commit it ran from. E2E tests did not run, and no CI runs on"
+            echo "this PR. **Review before merging.**"
+          } > "$RUNNER_TEMP/pr-body.md"
+
       # Runs on an empty patch too, as it always has: with no diff, the action opens
       # nothing and closes a stale PR from an earlier run. Pinned to a commit because
       # this third-party action is handed the write token.
@@ -198,11 +231,5 @@ jobs:
             :(glob)**/pnpm-workspace.yaml
           commit-message: "chore: reconcile dependency overrides with Dependabot alerts"
           title: "chore: reconcile dependency overrides"
-          body: |
-            Automated override reconciliation by `dependabot-agent` (pinned devDependency).
-            Adds/updates overrides for still-open transitive alerts and removes stale ones,
-            across the root workspace and the `functions/` sub-package.
-            The workflow built the app and Cloud Functions and passed the unit tests against
-            these changes on the commit it ran from. E2E tests did not run, and no CI runs on
-            this PR. **Review before merging.**
+          body-path: ${{ runner.temp }}/pr-body.md
           labels: dependencies
