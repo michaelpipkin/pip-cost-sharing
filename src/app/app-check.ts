@@ -12,6 +12,9 @@ import { appCheckConfig } from './firebase.config';
 
 let appCheck: AppCheck | null = null;
 let providerName: AppCheckProviderName = 'recaptcha';
+// Outcome of the latest appCheckTokenReady() check; null before any check.
+// See appCheckTokenFailed().
+let tokenConfirmed: boolean | null = null;
 
 // Which attestation mechanism backs App Check for this session. Exposed so
 // error logs can say which one a throttled/failed session was using.
@@ -108,6 +111,7 @@ export const appCheckTokenReady = async (
 ): Promise<AppCheckTokenResult> => {
   if (!appCheck) return { ready: true, reason: 'not-initialized' };
 
+  let tokenSettled = false;
   const tokenReady: Promise<AppCheckTokenResult> = getToken(appCheck)
     .then((): AppCheckTokenResult => ({ ready: true, reason: 'ready' }))
     .catch(
@@ -116,7 +120,13 @@ export const appCheckTokenReady = async (
         reason: 'error',
         detail: error instanceof Error ? error.message : 'Unknown error',
       })
-    );
+    )
+    .then((settled) => {
+      // A token that arrives after the timeout still counts.
+      tokenSettled = true;
+      tokenConfirmed = settled.ready;
+      return settled;
+    });
 
   let timer: ReturnType<typeof setTimeout>;
   const timedOut = new Promise<AppCheckTokenResult>((resolve) => {
@@ -128,8 +138,15 @@ export const appCheckTokenReady = async (
 
   const result = await Promise.race([tokenReady, timedOut]);
   clearTimeout(timer!);
+  if (!tokenSettled) tokenConfirmed = false;
   return result;
 };
+
+// True when the latest appCheckTokenReady() check ended without a token
+// (rejected, or still missing after its wait, until a late token arrives).
+// Used to tell an App Check refusal from a rules denial, which Firestore
+// words identically: App Check only refuses a request with no valid token.
+export const appCheckTokenFailed = (): boolean => tokenConfirmed === false;
 
 // Test-only. This module's state is a singleton shared for the lifetime of
 // the process, including across spec files in the same Vitest worker (this
@@ -140,4 +157,5 @@ export const resetAppCheckForTesting = (): void => {
   appCheck = null;
   providerName = 'recaptcha';
   nativeInitialization = null;
+  tokenConfirmed = null;
 };
