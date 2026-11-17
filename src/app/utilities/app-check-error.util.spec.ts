@@ -1,14 +1,78 @@
+import {
+  appCheckTokenReady,
+  initAppCheck,
+  resetAppCheckForTesting,
+} from '@app/app-check';
 import { FirebaseError } from 'firebase/app';
-import { describe, expect, it } from 'vitest';
+import * as appCheckModule from 'firebase/app-check';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { isLikelyAppCheckError } from './app-check-error.util';
 
 describe('isLikelyAppCheckError', () => {
-  it('returns false for a Firestore permission-denied error (a rules denial; Firestore App Check is not enforced)', () => {
-    const error = new FirebaseError(
-      'permission-denied',
-      'Missing or insufficient permissions.'
-    );
-    expect(isLikelyAppCheckError(error)).toBe(false);
+  beforeEach(() => {
+    resetAppCheckForTesting();
+  });
+
+  afterEach(() => {
+    resetAppCheckForTesting();
+    vi.restoreAllMocks();
+  });
+
+  describe('Firestore permission-denied', () => {
+    const denied = () =>
+      new FirebaseError(
+        'permission-denied',
+        'Missing or insufficient permissions.'
+      );
+
+    it('is a rules denial while no App Check token check has failed', () => {
+      expect(isLikelyAppCheckError(denied())).toBe(false);
+    });
+
+    it('is a rules denial when the token check succeeded', async () => {
+      initAppCheck({} as any);
+      vi.spyOn(appCheckModule, 'getToken').mockResolvedValueOnce({
+        token: 'abc',
+      } as any);
+      await appCheckTokenReady(1000);
+
+      expect(isLikelyAppCheckError(denied())).toBe(false);
+    });
+
+    it('is App Check when this session could not get a token', async () => {
+      initAppCheck({} as any);
+      vi.spyOn(appCheckModule, 'getToken').mockRejectedValueOnce(
+        new Error('AppCheck: Requests throttled')
+      );
+      await appCheckTokenReady(1000);
+
+      expect(isLikelyAppCheckError(denied())).toBe(true);
+    });
+
+    it('is App Check while the token is still missing after the wait', async () => {
+      initAppCheck({} as any);
+      vi.spyOn(appCheckModule, 'getToken').mockReturnValueOnce(
+        new Promise(() => {}) as any
+      );
+      await appCheckTokenReady(10);
+
+      expect(isLikelyAppCheckError(denied())).toBe(true);
+    });
+
+    it('is a rules denial again once a late token arrives', async () => {
+      initAppCheck({} as any);
+      let resolveToken!: (token: { token: string }) => void;
+      vi.spyOn(appCheckModule, 'getToken').mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveToken = resolve;
+        }) as any
+      );
+      await appCheckTokenReady(10);
+      resolveToken({ token: 'abc' });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(isLikelyAppCheckError(denied())).toBe(false);
+    });
   });
 
   it('returns false for a Functions permission-denied error', () => {

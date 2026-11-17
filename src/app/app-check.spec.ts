@@ -15,6 +15,10 @@ describe('app-check', () => {
   });
 
   afterEach(() => {
+    // Module state outlives the file (isolate: false): a failed token check
+    // left behind would make the next spec's permission-denied look like App
+    // Check.
+    resetAppCheckForTesting();
     vi.restoreAllMocks();
   });
 

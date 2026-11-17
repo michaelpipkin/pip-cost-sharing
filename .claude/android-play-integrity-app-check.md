@@ -424,11 +424,35 @@ event for the update dialog if tap-through matters.
   That rules out an Android-sized failure rate, not a low one. Old Android users
   taking the popup's web link are barely represented, so watch
   `app_check_status` with platform `web` after deploy.
-- **Still to change when Firestore enforcement is turned on:** add
-  `permission-denied` back to `APP_CHECK_LIKELY_CODES`
-  (`src/app/utilities/app-check-error.util.ts`). Until then a device refused by
-  App Check gets "Something went wrong" instead of the App Check help dialog.
-  Not added now because Firestore denials are rules denials while it's off.
+- **Firestore permission-denied message (written 2026-11-17):** done
+  differently from the plan above. A blanket `permission-denied` in
+  `APP_CHECK_LIKELY_CODES` would show the App Check dialog for ordinary rules
+  denials on the 14 screens that use `AppCheckErrorHandlerService`. Instead
+  `isLikelyAppCheckError` counts it as App Check only when this session's
+  `appCheckTokenReady()` check ended without a token (`appCheckTokenFailed()`
+  in `app-check.ts`; a late token clears it). Correct with enforcement on or
+  off, so it can ship before the console toggle.
+
+## SNAPSHOT 2026-11-17 (12 days after the required-update deploy)
+
+- Console, last 7 days: Firestore and Authentication both 100% verified (99%
+  over 30 days).
+- `app_check_status` since 11/6: Play Integrity 62 ready / 40 users, 0 failed,
+  0 timeouts; web reCAPTCHA 10 ready / 2 users, 0 failed.
+- `createUserProfileOnSignUp`: every run since 11/10 logs `status: 'ok'`.
+- Error log since 11/5 (after deleting the emulator entries): one
+  `linkInvitedMembers` "internal" on 1.3.1 (11/15), a function error, not App
+  Check.
+- Android 7-day active users: 1.3.1 = 170 (66 returning), 1.2.0 = 33,
+  1.1.7 = 12. Popup shown to 12 users since deploy (1.2.0: 7, 1.1.7: 5); none
+  tapped Update or the web link. Most old-build opens never reach web code, so
+  enforcement changes nothing for them. No builds older than 1.1.7 active.
+- Firestore: ready once the permission-denied change above is deployed.
+  Authentication: not yet. Android Google sign-in goes through the native SDK,
+  and it's unproven that native requests carry a Play Integrity token (native
+  App Check starts on the web code's first token request). Test by enforcing
+  briefly and signing in on a fresh 1.3.1 install, after Firestore has run
+  cleanly for a while.
 
 ## High-level architecture
 
