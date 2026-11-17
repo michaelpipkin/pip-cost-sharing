@@ -3,7 +3,13 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AppCheckErrorDialogComponent } from '@components/app-check-error-dialog/app-check-error-dialog.component';
 import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
+import {
+  appCheckTokenReady,
+  initAppCheck,
+  resetAppCheckForTesting,
+} from '@app/app-check';
 import { FirebaseError } from 'firebase/app';
+import * as appCheckModule from 'firebase/app-check';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppCheckErrorHandlerService } from './app-check-error-handler.service';
 
@@ -13,6 +19,7 @@ describe('AppCheckErrorHandlerService', () => {
   let mockSnackbar: { openFromComponent: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
+    resetAppCheckForTesting();
     mockDialog = { open: vi.fn() };
     mockSnackbar = { openFromComponent: vi.fn() };
 
@@ -27,6 +34,7 @@ describe('AppCheckErrorHandlerService', () => {
   });
 
   afterEach(() => {
+    resetAppCheckForTesting();
     vi.restoreAllMocks();
   });
 
@@ -43,6 +51,25 @@ describe('AppCheckErrorHandlerService', () => {
       CustomSnackbarComponent,
       { data: { message: 'fallback message' } }
     );
+  });
+
+  it('opens the App Check error dialog for a Firestore permission-denied error when this session could not get a token', async () => {
+    initAppCheck({} as any);
+    vi.spyOn(appCheckModule, 'getToken').mockRejectedValueOnce(
+      new Error('AppCheck: Requests throttled')
+    );
+    await appCheckTokenReady(1000);
+
+    service.handle(
+      new FirebaseError('permission-denied', 'Missing or insufficient permissions.'),
+      'fallback message'
+    );
+
+    expect(mockDialog.open).toHaveBeenCalledWith(AppCheckErrorDialogComponent, {
+      disableClose: false,
+      maxWidth: '80vw',
+    });
+    expect(mockSnackbar.openFromComponent).not.toHaveBeenCalled();
   });
 
   it('opens the App Check error dialog for a Functions unauthenticated error', () => {

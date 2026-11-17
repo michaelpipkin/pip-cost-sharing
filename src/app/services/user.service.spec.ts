@@ -1011,7 +1011,7 @@ describe('UserService', () => {
       providerData: [{ providerId: 'password' }],
     };
 
-    it('clears the loading overlay with the retry message, not the App Check dialog, for a Firestore permission-denied (Firestore is not App Check enforced)', async () => {
+    it('clears the loading overlay with the retry message, not the App Check dialog, for a Firestore permission-denied when no App Check token check failed (a rules denial)', async () => {
       vi.spyOn(firestoreModule, 'getDoc').mockRejectedValueOnce(
         new FirebaseError('permission-denied', 'Missing or insufficient permissions.')
       );
@@ -1582,6 +1582,25 @@ describe('UserService', () => {
 
         expect(getDocSpy).toHaveBeenCalled();
         expect(mockGroupService.getUserGroups).toHaveBeenCalled();
+      });
+
+      it('shows the App Check dialog when the first read is refused after this session could not get a token', async () => {
+        initAppCheck({} as any);
+        vi.spyOn(appCheckModule, 'getToken').mockRejectedValue(
+          new Error('AppCheck: Requests throttled')
+        );
+        vi.spyOn(firestoreModule, 'getDoc').mockRejectedValueOnce(
+          new FirebaseError('permission-denied', 'Missing or insufficient permissions.')
+        );
+        const callback = await getAuthStateCallback(service);
+
+        await callback(unverifiedUser() as any);
+
+        expect(mockLoadingService.loadingOff).toHaveBeenCalled();
+        expect(mockDialog.open).toHaveBeenCalledWith(
+          AppCheckErrorDialogComponent,
+          expect.anything()
+        );
       });
 
       it('keeps loading the account and logs the rejection reason when no App Check token is confirmed', async () => {
